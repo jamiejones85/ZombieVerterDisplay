@@ -28,8 +28,6 @@ void my_flush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p )
 
 int timer = 0;
 
-bool isEditing = false;
-
 
 void setup() {
   // put your setup code here, to run once:
@@ -51,7 +49,7 @@ void setup() {
   });
   
   button.attachDoubleClick([]() {
-      displayManager.ProcessDoubleClickInput
+      displayManager.ProcessDoubleClickInput();
   });
   Serial.println("Setting up Can");
   canSdo.Setup();
