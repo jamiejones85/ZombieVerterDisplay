@@ -21,11 +21,13 @@
 #define SDO_ERR_RANGE         0x06090030
 #define SDO_RESPONSE_DOWNLOAD (3 << 5)
 #define SDO_READ              (2 << 5)
+#define SDO_REQUEST_SEGMENT   (3 << 5)
+#define SDO_ABORT             0x80
 
 class CanSDO
 {
    public:
-      enum State { IDLE, ERROR, OBTAINSERIAL, OBTAIN_JSON };
+      enum State { IDLE, ERROR, OBTAINVALUE };
       enum SetResult { Ok, UnknownIndex, ValueOutOfRange, CommError };
       /** Default constructor */
       CanSDO();
@@ -42,6 +44,7 @@ class CanSDO
 
       void setValueSdo(uint16_t index, uint8_t subIndex, uint32_t value);
       void requestSdoElement(uint16_t index, uint8_t subIndex);
+
 
 };
 

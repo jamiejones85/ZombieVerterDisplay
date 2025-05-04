@@ -10,7 +10,7 @@ static const uint16_t screenHeight = 170;
 
 static lv_disp_draw_buf_t draw_buf;
 static lv_color_t buf1[ screenWidth * screenHeight / 13 ];
-extern void my_flush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p );
+extern void flushThunk( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p );
 
 DisplayManager::DisplayManager() {
   
@@ -112,7 +112,7 @@ void DisplayManager::Setup() {
   disp_drv.hor_res = screenWidth;
   disp_drv.ver_res = screenHeight;
   disp_drv.draw_buf = &draw_buf;
-  disp_drv.flush_cb = my_flush;
+  disp_drv.flush_cb = flushThunk;
   lv_disp_drv_register( &disp_drv );
 
   tft.fillScreen(TFT_BLACK);
