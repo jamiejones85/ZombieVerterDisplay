@@ -8,7 +8,7 @@
 
 CanSDO canSdo;
 DisplayManager displayManager;
-DataRetriever dataRetriever(canSdo);
+DataRetriever dataRetriever(canSdo, displayManager);
 InputManager inputManager(displayManager);
 
 void flushThunk( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p ) {

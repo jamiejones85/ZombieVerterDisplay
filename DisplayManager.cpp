@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include "ui.h"
 #include "pin_config.h"
+#include "Globals.h"
 
 TFT_eSPI tft = TFT_eSPI();
 static const uint16_t screenWidth  = 320;
@@ -14,6 +15,50 @@ extern void flushThunk( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *
 
 DisplayManager::DisplayManager() {
   
+}
+
+void DisplayManager::UpdateData(int id, int value) {
+  if (isEditing) {
+    //dont update if in edit mode
+    return;
+  }
+  
+  switch(id) {
+    case KWH_VALUE_ID:
+      kwh = value;
+      break;
+    case DIR_VALUE_ID:
+      dir = value;
+      break;
+    case BMS_T_AVG_VALUE_ID:
+      batteryAveTemp = value;
+      break;
+    case SOC_VALUE_ID:
+      stateOfCharge = value;
+      break;
+    case MOTOR_TEMP_VALUE_ID:
+      motorTemp = value;
+      break;
+    case INVERTER_TEMP_VALUE_ID:
+      inverterTemp = value;
+      break;
+    case GEAR_PARAM_ID:
+      gearSetting = value;
+      break;
+    case MOTORS_ACTIVE_PARAM_ID:
+      motorSetting = value;
+      break;
+    case REGEN_MAX_PARAM_ID:
+      regenSetting = value;
+      break;
+    case IDC_VALUE_ID:
+      amps = value;
+      break;
+  }
+}
+
+int DisplayManager::GetScreenIndex() {
+  return screenIndex;
 }
 
 void DisplayManager::ProcessClockwiseInput() {
@@ -121,13 +166,53 @@ void DisplayManager::Setup() {
 
 }
 
-void DisplayManager::Loop() {
-  lv_timer_handler();
-  if (screenIndex == BATTERYINFOSCREEN) {
-    lv_disp_load_scr( ui_Screen1);
-  } else if (screenIndex == TEMPERATUREINFOSCREEN) {
-    lv_disp_load_scr( ui_Screen2);
-  } else if (screenIndex == GEARSETTINGSCREEN) {
+void DisplayManager::Screen1Refresh() {
+   lv_disp_load_scr(ui_Screen1);
+
+    char str[8];
+    itoa( kwh, str, 10 );
+    lv_label_set_text(ui_kwhValue, str);
+
+    itoa(stateOfCharge, str, 10 );
+    lv_label_set_text(ui_socValue, str);
+
+    lv_arc_set_value(ui_socArc, stateOfCharge);
+
+    
+    itoa(amps, str, 10 );
+    lv_label_set_text(ui_ampsValue, str);
+
+    lv_arc_set_value(ui_ampsArc, amps);
+
+    if (dir == 1) {
+      lv_label_set_text(ui_Label18, "D");
+    } else if (dir == -1) {
+      lv_label_set_text(ui_Label18, "R");
+    } else {
+      lv_label_set_text(ui_Label18, "N");
+    }
+
+    char format[] = "%d C";
+    sprintf(str, format, batteryAveTemp);
+    lv_label_set_text(ui_batteryTempValue, str);
+
+}
+
+void DisplayManager::Screen2Refresh() {
+    lv_disp_load_scr(ui_Screen2);
+
+    char str[8];
+    itoa(motorTemp, str, 10 );
+    lv_label_set_text(ui_motorTempValue, str);
+    lv_arc_set_value(ui_motorTempArc, motorTemp);
+
+    itoa(inverterTemp, str, 10 );
+    lv_label_set_text(ui_inverterTempValue, str);
+    lv_arc_set_value(ui_inverterTempArc, inverterTemp);
+
+}
+
+void DisplayManager::Screen3Refresh() {
     lv_disp_load_scr( ui_Screen3);
     if (gearSetting == 0) {
       lv_label_set_text(ui_Label8, "LOW");
@@ -136,7 +221,9 @@ void DisplayManager::Loop() {
     } else if (gearSetting == 2) {
       lv_label_set_text(ui_Label8, "AUTO");
     }
-  } else if (screenIndex == MOTORSETTINGSCREEN) {
+}
+
+void DisplayManager::Screen4Refresh() {
     lv_disp_load_scr(ui_Screen4);
     if (motorSetting == 0) {
       lv_label_set_text(ui_Label12, "MG1+MG2");
@@ -147,10 +234,26 @@ void DisplayManager::Loop() {
     } else if (motorSetting == 3) {
       lv_label_set_text(ui_Label12, "BLEND");
     }
-  } else if (screenIndex == REGENSETTINGSCREEN) {
+}
+
+void DisplayManager::Screen5Refresh() {
     lv_disp_load_scr(ui_Screen5);
     char str[4];
     itoa( regenSetting, str, 10 );
     lv_label_set_text(ui_Label16, str);
+}
+
+void DisplayManager::Loop() {
+  lv_timer_handler();
+  if (screenIndex == BATTERYINFOSCREEN) {
+    Screen1Refresh();
+  } else if (screenIndex == TEMPERATUREINFOSCREEN) {
+    Screen2Refresh();
+  } else if (screenIndex == GEARSETTINGSCREEN) {
+    Screen3Refresh();
+  } else if (screenIndex == MOTORSETTINGSCREEN) {
+    Screen4Refresh();
+  } else if (screenIndex == REGENSETTINGSCREEN) {
+    Screen5Refresh();
   }
 }
