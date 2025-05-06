@@ -13,7 +13,7 @@ static lv_disp_draw_buf_t draw_buf;
 static lv_color_t buf1[ screenWidth * screenHeight / 13 ];
 extern void flushThunk( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p );
 
-DisplayManager::DisplayManager() {
+DisplayManager::DisplayManager(CanSDO &canSDO) : canSDO(canSDO) {
   
 }
 
@@ -102,6 +102,14 @@ void DisplayManager::ProcessClickInput() {
 }
 
 void DisplayManager::ProcessDoubleClickInput() {
+    if (screenIndex == GEARSETTINGSCREEN) {
+        canSDO.SetValue(GEAR_PARAM_ID, gearSetting);
+    } else if (screenIndex == MOTORSETTINGSCREEN) {
+        canSDO.SetValue(MOTORS_ACTIVE_PARAM_ID, motorSetting);
+    } else if (screenIndex == REGENSETTINGSCREEN) {
+        canSDO.SetValue(REGEN_MAX_PARAM_ID, regenSetting);
+    }
+  
     isEditing = false;
     lv_label_set_text(ui_gearEdittingLabel, "");
     lv_label_set_text(ui_motorEdittingLabel, "");

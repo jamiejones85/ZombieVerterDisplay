@@ -2,6 +2,7 @@
 #define DISPLAYMANAGER_H
 
 #include <lvgl.h>
+#include "CanSDO.h"
 
 #define BATTERYINFOSCREEN        0
 #define TEMPERATUREINFOSCREEN    1
@@ -15,7 +16,7 @@ class DisplayManager
 {
    public:
       /** Default constructor */
-      DisplayManager();
+      DisplayManager(CanSDO &canSDO);
       void Setup();
       void Loop();
       void Flusher(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p);
@@ -30,6 +31,7 @@ class DisplayManager
 
 
    private:
+      CanSDO &canSDO;
       int screenIndex = 0;
       int gearSetting = 0;
       int motorSetting = 0;
