@@ -49,7 +49,7 @@ void DisplayManager::UpdateData(int id, int value) {
       motorSetting = value;
       break;
     case REGEN_MAX_PARAM_ID:
-      regenSetting = value;
+      regenSetting = (int16_t)value;
       break;
     case IDC_VALUE_ID:
       amps = value;
@@ -147,7 +147,7 @@ void DisplayManager::Setup() {
   digitalWrite(PIN_POWER_ON, HIGH);
   tft.begin();
 
-  tft.setRotation(3);
+  tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
 
   pinMode(PIN_LCD_BL, OUTPUT);

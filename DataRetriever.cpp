@@ -1,5 +1,6 @@
 #include "DataRetriever.h"
 
+#include <Arduino.h>
 
 DataRetriever::DataRetriever(CanSDO &canSDO, DisplayManager &displayManager) : canSDO(canSDO), displayManager(displayManager) {
 }
@@ -14,8 +15,10 @@ void DataRetriever::GetNextValue() {
   }
 
   int dataId = dataSet[dataSetIndex][dataIndex];
-  int value = canSDO.GetValue(dataId);
-  displayManager.UpdateData(dataId, value);
+  if (dataId > 0) {
+    int value = canSDO.GetValue(dataId);
+    displayManager.UpdateData(dataId, value);
+  }
 
   dataIndex++;
 

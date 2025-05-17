@@ -35,7 +35,7 @@ class DisplayManager
       int screenIndex = 0;
       int gearSetting = 0;
       int motorSetting = 0;
-      int regenSetting = 0;
+      int16_t regenSetting = 0;
       int stateOfCharge = 0;
       int kwh = 0;
       int amps = 0;
