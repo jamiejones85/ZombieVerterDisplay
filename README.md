@@ -1,4 +1,6 @@
 # ZombieVerterDisplay
+![Screenshot](screenshot1.jpg)
+
 This project aims to provide an in car display for use with the open source ZombieVerterVCU (https://evbmw.com/index.php/evbmw-webshop/vcu-boards/zombie-vcu) 
 commonly used for electric vehicle conversion projects.
 
@@ -9,10 +11,10 @@ alternatively I'm working on a PCB with the power supply and Can Bus transceiver
 UI created in Squireline Studio
 
 ## Libraries required
-[lvgl@8.3.9]
-[TFT_eSPI@2.5.23]
-[SPI@2.0.0]
-[FS@2.0.0]
-[SPIFFS@2.0.0]
-[OneButton@2.0.4]
-[RotaryEncoder@1.5.2]
+- lvgl@8.3.9
+- TFT_eSPI@2.5.23
+- SPI@2.0.0
+- FS@2.0.0
+- SPIFFS@2.0.0
+- OneButton@2.0.4
+- RotaryEncoder@1.5.2
