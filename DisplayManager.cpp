@@ -52,7 +52,7 @@ void DisplayManager::UpdateData(int id, int value) {
       regenSetting = (int16_t)value;
       break;
     case IDC_VALUE_ID:
-      amps = value;
+      amps = (int16_t)value;
       break;
   }
 }
@@ -175,9 +175,9 @@ void DisplayManager::Setup() {
 }
 
 void DisplayManager::Screen1Refresh() {
-   lv_disp_load_scr(ui_Screen1);
+    lv_disp_load_scr(ui_Screen1);
 
-    char str[8];
+    char str[10];
     itoa( kwh, str, 10 );
     lv_label_set_text(ui_kwhValue, str);
 
@@ -186,12 +186,12 @@ void DisplayManager::Screen1Refresh() {
 
     lv_arc_set_value(ui_socArc, stateOfCharge);
 
-    
-    itoa(amps, str, 10 );
+    itoa(amps * -1 , str, 10 );
     lv_label_set_text(ui_ampsValue, str);
+    lv_arc_set_value(ui_ampsArc, amps * -1);
 
-    lv_arc_set_value(ui_ampsArc, amps);
-
+//    Serial.print("dir: ");
+//    Serial.println(dir);
     if (dir == 1) {
       lv_label_set_text(ui_Label18, "D");
     } else if (dir == -1) {
@@ -201,6 +201,8 @@ void DisplayManager::Screen1Refresh() {
     }
 
     char format[] = "%d C";
+//    Serial.print("BAt: ");
+//    Serial.println(batteryAveTemp);
     sprintf(str, format, batteryAveTemp);
     lv_label_set_text(ui_batteryTempValue, str);
 

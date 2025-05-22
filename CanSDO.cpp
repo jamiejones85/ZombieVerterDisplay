@@ -1,4 +1,5 @@
 #include "CanSDO.h"
+#include "Arduino.h"
 
 CanSDO::CanSDO() {
   
@@ -62,16 +63,35 @@ void CanSDO::requestSdoElement(uint16_t index, uint8_t subIndex) {
 
 double CanSDO::GetValue(int id) {
   if (state != IDLE) return 0;
-
+  int messageCount = 0;
+  bool responseRecieved = false;
+  Serial.print("Requesting ID: ");
+  Serial.println(id);
   requestSdoElement(SDO_INDEX_PARAM_UID | (id >> 8), id & 0xFF);
 
-  if (twai_receive(&inMessage, pdMS_TO_TICKS(10)) == ESP_OK) {
-    if (inMessage.data[0] == 0x80)
-      return 0;
-    else
-      return ((double)*(uint32_t*)&inMessage.data[4]) / 32;
+  while(!responseRecieved && messageCount < 10) {
+    if (twai_receive(&inMessage, pdMS_TO_TICKS(10)) == ESP_OK) {
+      messageCount++;
+
+      //if is SDO response
+      if(inMessage.identifier ==  SDO_REP_ID_BASE | ZOMBIE_NODE_ID) {
+
+        uint16_t index = SDO_INDEX_PARAM_UID | (id >> 8);
+        uint8_t data1 = index & 0xFF;
+        uint8_t data2 = index >> 8;
+        uint8_t data3 = id & 0xFF;
+              
+        if (inMessage.data_length_code == 8 && inMessage.data[0] != 0x80 
+          && inMessage.data[1] == data1 && inMessage.data[2] == data2 
+          && inMessage.data[3] == data3) {  
+              Serial.print("Response ID: ");
+              Serial.println(id);
+              return ((double)*(uint32_t*)&inMessage.data[4]) / 32;
+        }
+      }
+      
+    }
   }
-  else {
-    return 0;
-  }
+
+  return 0;
 }
