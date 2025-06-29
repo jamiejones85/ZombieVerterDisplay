@@ -40,7 +40,7 @@ class DisplayManager
       int kwh = 0;
       int amps = 0;
       int dir = 0;
-      int batteryAveTemp = 0;
+      int batteryMaxTemp = 0;
       int motorTemp = 0;
       int inverterTemp = 0;
 

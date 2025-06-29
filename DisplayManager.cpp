@@ -28,10 +28,10 @@ void DisplayManager::UpdateData(int id, int value) {
       kwh = value;
       break;
     case DIR_VALUE_ID:
-      dir = value;
+      dir = (int16_t)value;
       break;
-    case BMS_T_AVG_VALUE_ID:
-      batteryAveTemp = value;
+    case BMS_T_MAX_VALUE_ID:
+      batteryMaxTemp = value;
       break;
     case SOC_VALUE_ID:
       stateOfCharge = value;
@@ -203,7 +203,7 @@ void DisplayManager::Screen1Refresh() {
     char format[] = "%d C";
 //    Serial.print("BAt: ");
 //    Serial.println(batteryAveTemp);
-    sprintf(str, format, batteryAveTemp);
+    sprintf(str, format, batteryMaxTemp);
     lv_label_set_text(ui_batteryTempValue, str);
 
 }

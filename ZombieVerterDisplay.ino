@@ -8,6 +8,13 @@
 
 #include "FS.h"
 #include "SPIFFS.h"
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <AsyncElegantOTA.h>
+
+#define AP_SSID "ZombieDisplay"
+#define AP_PWD  "DisplayZombie"
 
 #define FORMAT_SPIFFS_IF_FAILED true
 
@@ -16,6 +23,8 @@ DisplayManager displayManager(canSdo);
 DataRetriever dataRetriever(canSdo, displayManager);
 InputManager inputManager(displayManager);
 hw_timer_t * timer = NULL;
+AsyncWebServer server(80);
+
 
 volatile bool requestNextData = false;
 
@@ -35,36 +44,26 @@ void doubleclickThunk() {
    displayManager.ProcessDoubleClickInput();
 }
 
-void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
-    Serial.printf("Listing directory: %s\r\n", dirname);
+// handles uploads
+void handleUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
 
-    File root = fs.open(dirname);
-    if(!root){
-        Serial.println("- failed to open directory");
-        return;
-    }
-    if(!root.isDirectory()){
-        Serial.println(" - not a directory");
-        return;
-    }
+  if (!index) {
+    // open the file on first call and store the file handle in the request object
+    request->_tempFile = SPIFFS.open("/" + filename, "w");
+  }
 
-    File file = root.openNextFile();
-    while(file){
-        if(file.isDirectory()){
-            Serial.print("  DIR : ");
-            Serial.println(file.name());
-            if(levels){
-                listDir(fs, file.path(), levels -1);
-            }
-        } else {
-            Serial.print("  FILE: ");
-            Serial.print(file.name());
-            Serial.print("\tSIZE: ");
-            Serial.println(file.size());
-        }
-        file = root.openNextFile();
-    }
+  if (len) {
+    // stream the incoming chunk to the opened file
+    request->_tempFile.write(data, len);
+  }
+
+  if (final) {
+    // close the file handle as the upload is now done
+    request->_tempFile.close();
+    request->redirect("/");
+  }
 }
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -80,17 +79,22 @@ void setup() {
   timerAlarmWrite(timer, 50000, true); // Interrupt every 50ms
   timerAlarmEnable(timer); // Enable the alarm
 
-  //test set Soc
-  canSdo.SetValue(SOC_VALUE_ID, 25);
+  //wifi
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(AP_SSID, AP_PWD);
 
-//  if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
-//      Serial.println("SPIFFS Mount Failed");
-//      return;
-//  }
+  server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request) {
+      request->send(200);
+    }, handleUpload);
 
-//  listDir(SPIFFS, "/", 0);
-//  Serial.println("Getting Zombie Version");
-//  canSdo.GetValue(2000);
+  AsyncElegantOTA.begin(&server);    // Start AsyncElegantOTA
+  server.begin();
+
+  if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
+      Serial.println("SPIFFS Mount Failed");
+      return;
+  }
+
 
 }
 
