@@ -29,7 +29,6 @@ void CanSDO::setValueSdo(uint16_t index, uint8_t subIndex, uint32_t value) {
 CanSDO::SetResult CanSDO::SetValue(int id, double value) {
   if (state != IDLE) return CommError;
 
-
   setValueSdo(SDO_INDEX_PARAM_UID | (id >> 8), id & 0xFF, (uint32_t)(value * 32));
 
   if (twai_receive(&inMessage, pdMS_TO_TICKS(10)) == ESP_OK) {
@@ -65,8 +64,7 @@ double CanSDO::GetValue(int id) {
   if (state != IDLE) return 0;
   int messageCount = 0;
   bool responseRecieved = false;
-  Serial.print("Requesting ID: ");
-  Serial.println(id);
+
   requestSdoElement(SDO_INDEX_PARAM_UID | (id >> 8), id & 0xFF);
 
   while(!responseRecieved && messageCount < 10) {
@@ -84,9 +82,8 @@ double CanSDO::GetValue(int id) {
         if (inMessage.data_length_code == 8 && inMessage.data[0] != 0x80 
           && inMessage.data[1] == data1 && inMessage.data[2] == data2 
           && inMessage.data[3] == data3) {  
-              Serial.print("Response ID: ");
-              Serial.println(id);
-              return ((double)*(uint32_t*)&inMessage.data[4]) / 32;
+              responseRecieved = true;
+              return ((double)*(int32_t*)&inMessage.data[4]) / 32;
         }
       }
       

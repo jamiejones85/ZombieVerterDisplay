@@ -29,3 +29,19 @@ void DataRetriever::GetNextValue() {
   }
   
 }
+
+void DataRetriever::GetSpotParameterValue() {
+  int spotParamId = displayManager.GetCurrentSpotParameterId();
+  if (spotParamId > 0) {
+    int value = canSDO.GetValue(spotParamId);
+    displayManager.UpdateSpotParameterData(spotParamId, value);
+  }
+}
+
+void DataRetriever::GetParameterValue() {
+  int paramId = displayManager.GetCurrentParameterId();
+  if (paramId > 0) {
+    int value = canSDO.GetValue(paramId);
+    displayManager.UpdateParameterData(paramId, value);
+  }
+}
