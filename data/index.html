@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON File Upload - ZombieVerterDisplay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .upload-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(248, 250, 252, 0.8);
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 1.1em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-info {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .message.success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #f0f0f0;
+            border-radius: 3px;
+            margin-top: 15px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="upload-container">
+        <h1>JSON File Upload</h1>
+        <p class="subtitle">ZombieVerterDisplay Configuration</p>
+        
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">Drop your JSON file here or click to browse</div>
+                <div style="font-size: 0.9em; color: #999; margin-top: 10px;">
+                    Accepts .json files only
+                </div>
+            </div>
+            
+            <input type="file" id="fileInput" class="file-input" accept=".json,application/json" required>
+            
+            <div class="file-info" id="fileInfo">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-size" id="fileSize"></div>
+            </div>
+            
+            <button type="submit" class="upload-btn" id="uploadBtn" disabled>
+                Upload JSON File
+            </button>
+            
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </form>
+        
+        <div class="message" id="message"></div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        const message = document.getElementById('message');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+
+        // Click to browse
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            // Validate file type
+            if (!file.type.includes('json') && !file.name.toLowerCase().endsWith('.json')) {
+                showMessage('Please select a valid JSON file.', 'error');
+                return;
+            }
+
+            // Show file info
+            fileName.textContent = file.name;
+            fileSize.textContent = `${(file.size / 1024).toFixed(2)} KB`;
+            fileInfo.style.display = 'block';
+            uploadBtn.disabled = false;
+            
+            // Clear any previous messages
+            hideMessage();
+        }
+
+        // Form submission
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const file = fileInput.files[0];
+            if (!file) {
+                showMessage('Please select a file first.', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = 'Uploading...';
+                progressBar.style.display = 'block';
+                
+                // Simulate progress (since we can't track real progress easily)
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += Math.random() * 30;
+                    if (progress > 90) progress = 90;
+                    progressFill.style.width = progress + '%';
+                }, 100);
+
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+
+                if (response.ok) {
+                    const result = await response.text();
+                    showMessage('File uploaded successfully!', 'success');
+                    
+                    // Reset form after successful upload
+                    setTimeout(() => {
+                        resetForm();
+                    }, 2000);
+                } else {
+                    throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                showMessage(`Upload failed: ${error.message}`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload JSON File';
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                    progressFill.style.width = '0%';
+                }, 1000);
+            }
+        });
+
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = `message ${type}`;
+            message.style.display = 'block';
+        }
+
+        function hideMessage() {
+            message.style.display = 'none';
+        }
+
+        function resetForm() {
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            uploadBtn.disabled = true;
+            hideMessage();
+        }
+    </script>
+</body>
+</html>
