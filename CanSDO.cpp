@@ -64,7 +64,6 @@ double CanSDO::GetValue(int id) {
   if (state != IDLE) return 0;
   int messageCount = 0;
   bool responseRecieved = false;
-
   requestSdoElement(SDO_INDEX_PARAM_UID | (id >> 8), id & 0xFF);
 
   while(!responseRecieved && messageCount < 10) {

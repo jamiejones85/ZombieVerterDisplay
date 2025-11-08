@@ -89,12 +89,15 @@ bool parseParamsFile() {
   Serial.print("JSON parsed successfully. Parameter count: ");
   Serial.println(paramsDoc.size());
   
-  // Add isFavorite field to all parameters if it doesn't exist
+  // Add isFavorite and isHidden fields to all parameters if they don't exist
   for (JsonPair param : paramsDoc.as<JsonObject>()) {
     JsonObject paramObj = param.value().as<JsonObject>();
     if (paramObj.containsKey("isparam") && paramObj["isparam"].as<bool>()) {
       if (!paramObj.containsKey("isFavorite")) {
         paramObj["isFavorite"] = false;
+      }
+      if (!paramObj.containsKey("isHidden")) {
+        paramObj["isHidden"] = false;
       }
     }
   }
@@ -161,12 +164,30 @@ void setup() {
         }
   });
   
-  // Serve the favorites page
-  server.on("/favorites", HTTP_GET, [](AsyncWebServerRequest *request){
-        if (SPIFFS.exists("/favorites.html")) {
-            request->send(SPIFFS, "/favorites.html", "text/html");
+  // Serve the params page
+  server.on("/params", HTTP_GET, [](AsyncWebServerRequest *request){
+        if (SPIFFS.exists("/params.html")) {
+            request->send(SPIFFS, "/params.html", "text/html");
         } else {
-            request->send(404, "text/plain", "Favorites page not found");
+            request->send(404, "text/plain", "Params page not found");
+        }
+  });
+
+  // Serve the settings page
+  server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request){
+        if (SPIFFS.exists("/settings.html")) {
+            request->send(SPIFFS, "/settings.html", "text/html");
+        } else {
+            request->send(404, "text/plain", "Settings page not found");
+        }
+  });
+
+  // Serve the spot params page
+  server.on("/spotparams", HTTP_GET, [](AsyncWebServerRequest *request){
+        if (SPIFFS.exists("/spotparams.html")) {
+            request->send(SPIFFS, "/spotparams.html", "text/html");
+        } else {
+            request->send(404, "text/plain", "Spot params page not found");
         }
   });
   
@@ -228,7 +249,82 @@ void setup() {
             jsonBuffer = "";
         }
     });
-  
+
+  // API endpoint to get settings
+  server.on("/api/settings", HTTP_GET, [](AsyncWebServerRequest *request){
+        // Open settings file if it exists
+        if (SPIFFS.exists("/settings.json")) {
+            File file = SPIFFS.open("/settings.json", "r");
+            if (file) {
+                String settings = file.readString();
+                file.close();
+                request->send(200, "application/json", settings);
+                return;
+            }
+        }
+        // Return default settings if file doesn't exist
+        request->send(200, "application/json", "{\"rotation\":0}");
+  });
+
+  // API endpoint to save settings
+  server.on("/api/settings", HTTP_POST,
+    [](AsyncWebServerRequest *request){
+        // This will be called when the request is complete
+    },
+    NULL,
+    [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total){
+        static String jsonBuffer = "";
+
+        // Accumulate data chunks
+        if (index == 0) {
+            jsonBuffer = "";
+        }
+
+        // Add current chunk to buffer
+        for (size_t i = 0; i < len; i++) {
+            jsonBuffer += (char)data[i];
+        }
+
+        // Process when all data is received
+        if (index + len == total) {
+            Serial.print("Received settings data: ");
+            Serial.println(jsonBuffer);
+
+            // Parse the JSON data
+            DynamicJsonDocument settingsDoc(1024);
+            DeserializationError error = deserializeJson(settingsDoc, jsonBuffer);
+
+            if (error) {
+                Serial.print("Settings JSON parse error: ");
+                Serial.println(error.c_str());
+                request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+                return;
+            }
+
+            // Save to SPIFFS
+            File file = SPIFFS.open("/settings.json", "w");
+            if (!file) {
+                request->send(500, "application/json", "{\"error\":\"Failed to save settings\"}");
+                Serial.println("Failed to open settings.json for writing");
+                return;
+            }
+
+            if (serializeJson(settingsDoc, file) == 0) {
+                file.close();
+                request->send(500, "application/json", "{\"error\":\"Failed to write settings\"}");
+                Serial.println("Failed to write settings.json");
+                return;
+            }
+
+            file.close();
+            request->send(200, "application/json", "{\"success\":true,\"message\":\"Settings saved successfully\"}");
+            Serial.println("Settings saved successfully");
+
+            // Clear buffer for next request
+            jsonBuffer = "";
+        }
+    });
+
   server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request) {
       request->send(200);
     }, handleUpload);

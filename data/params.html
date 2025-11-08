@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parameter Favorites - ZombieVerter Display</title>
+    <title>Parameters - ZombieVerter Display</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -93,13 +93,6 @@
             background-color: #f0f0f0;
             border-color: #bbb;
         }
-        .param-item.favorite {
-            border-color: #28a745;
-            background-color: #f8fff9;
-        }
-        .param-item.favorite:hover {
-            background-color: #f0fff0;
-        }
         .param-info {
             flex: 1;
             display: flex;
@@ -142,7 +135,7 @@
             font-size: 12px;
             color: #888;
         }
-        .favorite-btn {
+        .hide-btn {
             padding: 8px 16px;
             border: none;
             border-radius: 4px;
@@ -150,21 +143,26 @@
             font-size: 14px;
             font-weight: 500;
             transition: all 0.2s ease;
-            min-width: 120px;
+            min-width: 100px;
+            margin-left: 10px;
         }
-        .favorite-btn.add {
-            background-color: #28a745;
+        .hide-btn.hide {
+            background-color: #ffc107;
+            color: #333;
+        }
+        .hide-btn.hide:hover {
+            background-color: #e0a800;
+        }
+        .hide-btn.show {
+            background-color: #6c757d;
             color: white;
         }
-        .favorite-btn.add:hover {
-            background-color: #218838;
+        .hide-btn.show:hover {
+            background-color: #5a6268;
         }
-        .favorite-btn.remove {
-            background-color: #dc3545;
-            color: white;
-        }
-        .favorite-btn.remove:hover {
-            background-color: #c82333;
+        .param-item.hidden {
+            opacity: 0.5;
+            background-color: #f5f5f5;
         }
         .stats {
             display: flex;
@@ -187,11 +185,47 @@
             color: #666;
             text-transform: uppercase;
         }
+        .nav-menu {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+        .nav-link {
+            background: white;
+            color: #007bff;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .nav-link:hover {
+            background: #007bff;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+        }
+        .nav-link.active {
+            background: #007bff;
+            color: white;
+        }
     </style>
 </head>
 <body>
+    <nav class="nav-menu">
+        <a href="/" class="nav-link">Upload</a>
+        <a href="/params" class="nav-link active">Params</a>
+        <a href="/spotparams" class="nav-link">Spot Params</a>
+        <a href="/settings" class="nav-link">Settings</a>
+        <a href="/update" class="nav-link">Update</a>
+    </nav>
+
     <div class="container">
-        <h1>Parameter Favorites Manager</h1>
+        <h1>Parameters Manager</h1>
         
         <div id="message"></div>
         
@@ -345,11 +379,12 @@
 
         function createParameterItem(name, param) {
             const item = document.createElement('div');
-            item.className = `param-item ${param.isFavorite ? 'favorite' : ''}`;
-            
+            const isHidden = param.isHidden || false;
+            item.className = `param-item ${isHidden ? 'hidden' : ''}`;
+
             const rangeText = param.minimum !== undefined ? `Range: ${param.minimum} - ${param.maximum}` : '';
             const defaultText = param.default !== undefined ? `Default: ${param.default}` : '';
-            
+
             item.innerHTML = `
                 <div class="param-info">
                     <div class="param-main">
@@ -362,69 +397,69 @@
                         ${defaultText ? `<div class="param-range">${defaultText}</div>` : ''}
                     </div>
                 </div>
-                <button class="favorite-btn ${param.isFavorite ? 'remove' : 'add'}" 
-                        onclick="toggleFavorite('${name}', this)">
-                    ${param.isFavorite ? 'Remove Favorite' : 'Add to Favorites'}
+                <button class="hide-btn ${isHidden ? 'show' : 'hide'}"
+                        onclick="toggleHidden('${name}', this)">
+                    ${isHidden ? 'Show' : 'Hide'}
                 </button>
             `;
-            
+
             return item;
         }
 
-        async function toggleFavorite(paramName, button) {
+        async function toggleHidden(paramName, button) {
             const param = allParameters[paramName];
-            const originalState = param.isFavorite;
-            param.isFavorite = !param.isFavorite;
-            
+            const originalState = param.isHidden || false;
+            param.isHidden = !originalState;
+
             // Update button appearance and text immediately
             const item = button.closest('.param-item');
             button.disabled = true;
             button.textContent = 'Saving...';
-            
+
             try {
                 // Save the change to the server
-                await saveParameterFavorite(paramName, param.isFavorite);
-                
+                await saveParameterSettings(paramName, param.isHidden);
+
                 // Update UI on success
-                if (param.isFavorite) {
-                    item.classList.add('favorite');
-                    button.classList.remove('add');
-                    button.classList.add('remove');
-                    button.textContent = 'Remove Favorite';
+                if (param.isHidden) {
+                    item.classList.add('hidden');
+                    button.classList.remove('hide');
+                    button.classList.add('show');
+                    button.textContent = 'Show';
                 } else {
-                    item.classList.remove('favorite');
-                    button.classList.remove('remove');
-                    button.classList.add('add');
-                    button.textContent = 'Add to Favorites';
+                    item.classList.remove('hidden');
+                    button.classList.remove('show');
+                    button.classList.add('hide');
+                    button.textContent = 'Hide';
                 }
-                
+
                 updateStats();
-                
+
             } catch (error) {
                 // Revert the change on error
-                param.isFavorite = originalState;
-                console.error('Error saving favorite:', error);
-                showMessage('Error saving favorite: ' + error.message, 'error');
-                
+                param.isHidden = originalState;
+                console.error('Error saving hidden state:', error);
+                showMessage('Error saving hidden state: ' + error.message, 'error');
+
                 // Revert button state
                 if (originalState) {
-                    button.classList.remove('add');
-                    button.classList.add('remove');
-                    button.textContent = 'Remove Favorite';
+                    button.classList.remove('hide');
+                    button.classList.add('show');
+                    button.textContent = 'Show';
                 } else {
-                    button.classList.remove('remove');
-                    button.classList.add('add');
-                    button.textContent = 'Add to Favorites';
+                    button.classList.remove('show');
+                    button.classList.add('hide');
+                    button.textContent = 'Hide';
                 }
             } finally {
                 button.disabled = false;
             }
         }
 
-        async function saveParameterFavorite(paramName, isFavorite) {
-            // Update the specific parameter's favorite status
-            allParameters[paramName].isFavorite = isFavorite;
-            
+        async function saveParameterSettings(paramName, isHidden) {
+            // Update the specific parameter's hidden status
+            allParameters[paramName].isHidden = isHidden;
+
             // Send the entire parameters object to the server
             const response = await fetch('/api/favorites', {
                 method: 'POST',
@@ -433,11 +468,11 @@
                 },
                 body: JSON.stringify(allParameters)
             });
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const result = await response.json();
             if (!result.success) {
                 throw new Error(result.error || 'Unknown error occurred');

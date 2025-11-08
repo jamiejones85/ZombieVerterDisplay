@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - ZombieVerter Display</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 80px 20px 20px;
+        }
+
+        .nav-menu {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .nav-link {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-link:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-link.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+            text-align: center;
+        }
+
+        .settings-section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 15px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .setting-item {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .setting-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .setting-description {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 15px;
+        }
+
+        .rotation-options {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .rotation-option {
+            flex: 1;
+            position: relative;
+        }
+
+        .rotation-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+        }
+
+        .rotation-option label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            min-height: 120px;
+        }
+
+        .rotation-option input[type="radio"]:checked + label {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .rotation-option label:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .rotation-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .rotation-label {
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+
+        .message.success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-menu">
+        <a href="/" class="nav-link">Upload</a>
+        <a href="/params" class="nav-link">Params</a>
+        <a href="/spotparams" class="nav-link">Spot Params</a>
+        <a href="/settings" class="nav-link active">Settings</a>
+        <a href="/update" class="nav-link">Update</a>
+    </nav>
+
+    <div class="container">
+        <h1>Settings</h1>
+        <p class="subtitle">Configure your ZombieVerterDisplay</p>
+
+        <div class="settings-section">
+            <div class="section-title">Display Settings</div>
+
+            <div class="setting-item">
+                <div class="setting-name">Screen Rotation</div>
+                <div class="setting-description">Choose the display orientation</div>
+
+                <div class="rotation-options">
+                    <div class="rotation-option">
+                        <input type="radio" id="rotate0" name="rotation" value="0" checked>
+                        <label for="rotate0">
+                            <div class="rotation-icon">📱</div>
+                            <div class="rotation-label">0°</div>
+                        </label>
+                    </div>
+
+                    <div class="rotation-option">
+                        <input type="radio" id="rotate180" name="rotation" value="180">
+                        <label for="rotate180">
+                            <div class="rotation-icon">📱</div>
+                            <div class="rotation-label">180°</div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+        </div>
+
+        <div class="message" id="message"></div>
+    </div>
+
+    <script>
+        // Load settings on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings();
+        });
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                if (response.ok) {
+                    const settings = await response.json();
+
+                    if (settings.rotation !== undefined) {
+                        const rotationRadio = document.getElementById('rotate' + settings.rotation);
+                        if (rotationRadio) {
+                            rotationRadio.checked = true;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('Using default settings');
+            }
+        }
+
+        async function saveSettings() {
+            const rotation = document.querySelector('input[name="rotation"]:checked').value;
+
+            const settings = {
+                rotation: parseInt(rotation)
+            };
+
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(settings)
+                });
+
+                if (response.ok) {
+                    showMessage('Settings saved successfully! Display will rotate to ' + rotation + '°', 'success');
+                } else {
+                    throw new Error('Failed to save settings');
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showMessage('Error saving settings: ' + error.message, 'error');
+            }
+        }
+
+        function showMessage(text, type) {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.className = `message ${type}`;
+            message.style.display = 'block';
+
+            if (type === 'success') {
+                setTimeout(() => {
+                    message.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>

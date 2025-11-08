@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "DisplayManager.h"
 #include "DataRetriever.h"
 #include <TFT_eSPI.h>
@@ -7,6 +8,8 @@
 #include "Globals.h"
 #include "FS.h"
 #include "SPIFFS.h"
+#include <ArduinoJson.h>
+#include "FS.h"
 
 TFT_eSPI tft = TFT_eSPI();
 static const uint16_t screenWidth  = 320;
@@ -224,12 +227,38 @@ void DisplayManager::Flusher( lv_disp_drv_t *disp, const lv_area_t *area, lv_col
 
 
 void DisplayManager::Setup() {
-  
+
   pinMode(PIN_POWER_ON, OUTPUT);
   digitalWrite(PIN_POWER_ON, HIGH);
   tft.begin();
 
-  tft.setRotation(1);
+  // Load rotation setting from SPIFFS
+  int rotation = 1; // Default rotation
+  if (SPIFFS.exists("/settings.json")) {
+    fs::File file = SPIFFS.open("/settings.json", "r");
+    if (file) {
+      DynamicJsonDocument settingsDoc(1024);
+      DeserializationError error = deserializeJson(settingsDoc, file);
+      file.close();
+
+      if (!error && settingsDoc.containsKey("rotation")) {
+        int savedRotation = settingsDoc["rotation"].as<int>();
+        // Only accept 0 or 180 degree rotations (which map to rotation values 1 and 3)
+        if (savedRotation == 0) {
+          rotation = 1;
+        } else if (savedRotation == 180) {
+          rotation = 3;
+        }
+        Serial.print("Loaded rotation setting: ");
+        Serial.print(savedRotation);
+        Serial.print(" degrees (rotation value: ");
+        Serial.print(rotation);
+        Serial.println(")");
+      }
+    }
+  }
+
+  tft.setRotation(rotation);
   tft.fillScreen(TFT_BLACK);
 
   pinMode(PIN_LCD_BL, OUTPUT);
@@ -368,20 +397,26 @@ void DisplayManager::LoadParameters() {
   // Parse parameters from JSON document
   for (JsonPair param : paramsDoc.as<JsonObject>()) {
     JsonObject paramObj = param.value().as<JsonObject>();
-    
-    // Load parameters where isparam is true
+
+    // Load parameters where isparam is true and not hidden
     if (paramObj.containsKey("isparam") && paramObj["isparam"].as<bool>() && parameterCount < MAX_PARAMETERS) {
+      // Skip hidden parameters
+      bool isHidden = paramObj.containsKey("isHidden") ? paramObj["isHidden"].as<bool>() : false;
+      if (isHidden) {
+        continue;
+      }
+
       strncpy(parameters[parameterCount].name, param.key().c_str(), sizeof(parameters[parameterCount].name) - 1);
       parameters[parameterCount].name[sizeof(parameters[parameterCount].name) - 1] = '\0';
-      
-      
+
+
       if (paramObj.containsKey("unit")) {
         strncpy(parameters[parameterCount].unit, paramObj["unit"].as<String>().c_str(), sizeof(parameters[parameterCount].unit) - 1);
         parameters[parameterCount].unit[sizeof(parameters[parameterCount].unit) - 1] = '\0';
       } else {
         strcpy(parameters[parameterCount].unit, "");
       }
-      
+
       parameters[parameterCount].value = paramObj.containsKey("value") ? paramObj["value"].as<float>() : 0.0f;
       parameters[parameterCount].minimum = paramObj.containsKey("minimum") ? paramObj["minimum"].as<float>() : 0.0f;
       parameters[parameterCount].maximum = paramObj.containsKey("maximum") ? paramObj["maximum"].as<float>() : 100.0f;
@@ -389,22 +424,28 @@ void DisplayManager::LoadParameters() {
       parameters[parameterCount].id = paramObj.containsKey("id") ? paramObj["id"].as<int>() : 0;
       parameters[parameterCount].isparam = paramObj["isparam"].as<bool>();
       parameters[parameterCount].isFavorite = paramObj.containsKey("isFavorite") ? paramObj["isFavorite"].as<bool>() : false;
-      
+
       parameterCount++;
     }
-    // Load spot parameters where isparam is false
+    // Load spot parameters where isparam is false and not hidden
     else if (paramObj.containsKey("isparam") && !paramObj["isparam"].as<bool>() && spotParameterCount < MAX_PARAMETERS) {
+      // Skip hidden spot parameters
+      bool isHidden = paramObj.containsKey("isHidden") ? paramObj["isHidden"].as<bool>() : false;
+      if (isHidden) {
+        continue;
+      }
+
       strncpy(spotParameters[spotParameterCount].name, param.key().c_str(), sizeof(spotParameters[spotParameterCount].name) - 1);
       spotParameters[spotParameterCount].name[sizeof(spotParameters[spotParameterCount].name) - 1] = '\0';
-      
-      
+
+
       if (paramObj.containsKey("unit")) {
         strncpy(spotParameters[spotParameterCount].unit, paramObj["unit"].as<String>().c_str(), sizeof(spotParameters[spotParameterCount].unit) - 1);
         spotParameters[spotParameterCount].unit[sizeof(spotParameters[spotParameterCount].unit) - 1] = '\0';
       } else {
         strcpy(spotParameters[spotParameterCount].unit, "");
       }
-      
+
       spotParameters[spotParameterCount].value = paramObj.containsKey("value") ? paramObj["value"].as<float>() : 0.0f;
       spotParameters[spotParameterCount].minimum = paramObj.containsKey("minimum") ? paramObj["minimum"].as<float>() : 0.0f;
       spotParameters[spotParameterCount].maximum = paramObj.containsKey("maximum") ? paramObj["maximum"].as<float>() : 100.0f;
@@ -412,7 +453,7 @@ void DisplayManager::LoadParameters() {
       spotParameters[spotParameterCount].id = paramObj.containsKey("id") ? paramObj["id"].as<int>() : 0;
       spotParameters[spotParameterCount].isparam = paramObj["isparam"].as<bool>();
       spotParameters[spotParameterCount].isFavorite = false;
-      
+
       spotParameterCount++;
     }
   }
