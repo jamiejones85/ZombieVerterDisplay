@@ -11,3 +11,5 @@
 #define GEAR_PARAM_ID          27
 #define MOTORS_ACTIVE_PARAM_ID 129
 #define REGEN_MAX_PARAM_ID     61
+
+#define HEATREQ_PARAM_ID       155

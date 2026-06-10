@@ -1,0 +1,143 @@
+name: Build and Deploy Web Flasher
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+
+      - name: Install ESP32 platform
+        run: |
+          arduino-cli config init
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+
+      - name: Install required libraries
+        run: |
+          arduino-cli lib install "lvgl@8.3.9"
+          arduino-cli lib install "TFT_eSPI@2.5.43"
+          arduino-cli lib install "OneButton@2.0.4"
+          arduino-cli lib install "RotaryEncoder@1.5.2"
+          arduino-cli lib install "ArduinoJson"
+          arduino-cli lib install "AsyncTCP"
+          arduino-cli lib install "ESP Async WebServer"
+          arduino-cli lib install "ElegantOTA"
+
+      - name: Copy LVGL configuration
+        run: |
+          # Copy lv_conf.h to the Arduino libraries directory
+          cp lv_conf.h $HOME/Arduino/libraries/
+
+      - name: Compile sketch
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc \
+            --output-dir ./build \
+            --export-binaries \
+            ZombieVerterDisplay.ino
+
+      - name: List build outputs
+        run: ls -la ./build/
+
+      - name: Download ESP32 tools for merging
+        run: |
+          # Get the esptool from pip
+          pip install esptool
+
+          # Download bootloader and partition files
+          mkdir -p esp32-tools
+          wget -q https://github.com/espressif/arduino-esp32/raw/master/tools/partitions/default.bin -O esp32-tools/partitions.bin
+          wget -q https://github.com/espressif/arduino-esp32/raw/master/tools/sdk/esp32s3/bin/bootloader_dio_80m.bin -O esp32-tools/bootloader.bin
+
+      - name: Create merged firmware binary
+        run: |
+          # Merge bootloader, partitions, app, and SPIFFS into single binary
+          # Standard ESP32-S3 offsets:
+          # 0x0000 = bootloader
+          # 0x8000 = partition table
+          # 0xe000 = boot_app0
+          # 0x10000 = app firmware
+          # 0x290000 = SPIFFS (standard default partition)
+
+          # Get boot_app0.bin
+          wget -q https://github.com/espressif/arduino-esp32/raw/master/tools/partitions/boot_app0.bin -O esp32-tools/boot_app0.bin
+
+          # Find the compiled firmware (it might have different names)
+          FIRMWARE=$(find ./build -name "*.ino.bin" | head -n 1)
+          echo "Found firmware: $FIRMWARE"
+
+          # Check if SPIFFS binary exists
+          if [ -f "ZombieVerterDisplay.spiffs.bin" ]; then
+            echo "Using existing SPIFFS binary"
+            SPIFFS_BIN="ZombieVerterDisplay.spiffs.bin"
+          elif [ -f "./build/ZombieVerterDisplay.spiffs.bin" ]; then
+            echo "Using build directory SPIFFS binary"
+            SPIFFS_BIN="./build/ZombieVerterDisplay.spiffs.bin"
+          else
+            echo "No SPIFFS binary found, creating merged binary without SPIFFS"
+            SPIFFS_BIN=""
+          fi
+
+          # Create the merged binary
+          if [ -n "$SPIFFS_BIN" ]; then
+            python -m esptool --chip esp32s3 merge_bin \
+              -o web-flasher/firmware.bin \
+              --flash_mode dio \
+              --flash_freq 80m \
+              --flash_size 8MB \
+              0x0000 esp32-tools/bootloader.bin \
+              0x8000 esp32-tools/partitions.bin \
+              0xe000 esp32-tools/boot_app0.bin \
+              0x10000 "$FIRMWARE" \
+              0x290000 "$SPIFFS_BIN"
+          else
+            python -m esptool --chip esp32s3 merge_bin \
+              -o web-flasher/firmware.bin \
+              --flash_mode dio \
+              --flash_freq 80m \
+              --flash_size 8MB \
+              0x0000 esp32-tools/bootloader.bin \
+              0x8000 esp32-tools/partitions.bin \
+              0xe000 esp32-tools/boot_app0.bin \
+              0x10000 "$FIRMWARE"
+          fi
+
+      - name: Verify firmware binary
+        run: |
+          ls -lh web-flasher/firmware.bin
+          echo "Firmware binary created successfully"
+
+      - name: Upload artifact for GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./web-flasher
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

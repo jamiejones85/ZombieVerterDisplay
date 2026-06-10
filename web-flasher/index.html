@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZombieVerter Display — Web Installer</title>
+  <script
+    type="module"
+    src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"
+  ></script>
+  <style>
+    :root {
+      --green:  #22c55e;
+      --yellow: #eab308;
+      --bg:     #0f172a;
+      --card:   #1e293b;
+      --border: #334155;
+      --text:   #f1f5f9;
+      --muted:  #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 0.4rem;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 560px;
+      margin-bottom: 1.25rem;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .step-number {
+      background: var(--green);
+      color: #000;
+      font-weight: 700;
+      font-size: 0.8rem;
+      border-radius: 50%;
+      width: 1.5rem;
+      height: 1.5rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    ol, ul {
+      padding-left: 1.2rem;
+    }
+
+    li {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+
+    li strong {
+      color: var(--text);
+    }
+
+    .note {
+      background: #1c2a1c;
+      border-left: 3px solid var(--green);
+      border-radius: 4px;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: #86efac;
+      margin-top: 0.75rem;
+    }
+
+    .warning {
+      background: #2a1e0a;
+      border-left: 3px solid var(--yellow);
+      border-radius: 4px;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: #fde68a;
+      margin-top: 0.75rem;
+    }
+
+    .install-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.5rem 0;
+    }
+
+    esp-web-install-button {
+      --esp-tools-button-color: var(--green);
+      --esp-tools-button-text-color: #000;
+    }
+
+    esp-web-install-button[install-unsupported] {
+      visibility: inherit;
+    }
+
+    .browser-note {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .browser-note a {
+      color: var(--green);
+    }
+
+    .after-steps {
+      list-style: none;
+      padding: 0;
+    }
+
+    .after-steps li {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.3rem 0;
+    }
+
+    .after-steps li::before {
+      content: "✓";
+      color: var(--green);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    footer {
+      margin-top: 2rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
+    footer a {
+      color: var(--green);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>ZombieVerter Display</h1>
+    <p>Web Installer — Lilygo T-Embed (ESP32-S3)</p>
+  </header>
+
+  <!-- Step 1: What you need -->
+  <div class="card">
+    <h2><span class="step-number">1</span> What you need</h2>
+    <ul>
+      <li><strong>Lilygo T-Embed</strong> with a USB-C cable that supports <strong>data transfer</strong><br>
+          (many cheap cables are charge-only — if it doesn't work, try a different cable)</li>
+      <li>Google <strong>Chrome</strong> or Microsoft <strong>Edge</strong> browser<br>
+          (Firefox and Safari are not supported by the Web Serial API)</li>
+      <li>CAN Bus transceiver connected to T-Embed headers</li>
+      <li>Your ZombieVerter VCU connected via CAN to the display after flashing</li>
+    </ul>
+    <div class="note">
+      ✓ The T-Embed does <strong>not</strong> require holding any buttons to enter flash mode —
+      it will connect automatically when you click Install below.
+    </div>
+  </div>
+
+  <!-- Step 2: Install -->
+  <div class="card">
+    <h2><span class="step-number">2</span> Install firmware</h2>
+    <div class="install-wrapper">
+      <esp-web-install-button manifest="manifest.json">
+        <span slot="unsupported">
+          ⚠️ Your browser doesn't support Web Serial.<br>
+          Please use <strong>Chrome</strong> or <strong>Edge</strong>.
+        </span>
+        <span slot="activate">
+          Click to Install ZombieVerter Display
+        </span>
+      </esp-web-install-button>
+      <p class="browser-note">
+        This will erase the device and install the latest firmware + web interface files.
+        The process takes about 30–60 seconds.
+      </p>
+    </div>
+    <div class="warning">
+      ⚠️ <strong>This will erase all existing data on the device.</strong>
+      If you have custom settings saved, back them up first via the
+      device's WiFi interface before flashing.
+    </div>
+  </div>
+
+  <!-- Step 3: After flashing -->
+  <div class="card">
+    <h2><span class="step-number">3</span> After flashing</h2>
+    <ul class="after-steps">
+      <li>The T-Embed will reboot and show the ZombieVerter splash screen</li>
+      <li>With your VCU powered on and CAN connected, the display will automatically
+          download the parameter list from the VCU (~5 seconds)</li>
+      <li>The splash screen will show <strong>"VCU params loaded!"</strong> when complete</li>
+      <li>Use the rotary encoder to navigate screens and the button to interact</li>
+      <li>Press the button to enable the <strong>WiFi configuration interface</strong>
+          (SSID: <code>ZombieVerter-Display</code>)</li>
+    </ul>
+    <div class="note">
+      If the VCU is not connected at first boot, the display will show
+      "VCU unavailable" and use default parameters. Connect the VCU and reboot
+      to fetch the correct parameter list.
+    </div>
+  </div>
+
+  <footer>
+    <a href="https://github.com/jamiejones85/ZombieVerterDisplay" target="_blank">
+      View on GitHub
+    </a>
+    &nbsp;·&nbsp;
+    ZombieVerter Display v1.1.0
+  </footer>
+
+</body>
+</html>

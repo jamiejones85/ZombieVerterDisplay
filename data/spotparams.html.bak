@@ -6,34 +6,23 @@
     <title>Spot Parameters - ZombieVerter Display</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
             margin: 0;
-            padding: 100px 20px 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            padding: 20px;
+            background-color: #f5f5f5;
         }
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         h1 {
             color: #333;
             text-align: center;
-            margin-bottom: 10px;
-            font-size: 2.5em;
-            font-weight: 700;
-        }
-        .subtitle {
-            text-align: center;
-            color: #666;
             margin-bottom: 30px;
-            font-size: 1.1em;
         }
         .controls {
             display: flex;
@@ -46,66 +35,45 @@
             align-items: center;
             gap: 5px;
         }
-        select, input {
-            padding: 10px 15px;
-            border: 2px solid rgba(102, 126, 234, 0.2);
-            border-radius: 10px;
+        select, input, button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
             font-size: 14px;
-            background: white;
-            transition: all 0.3s ease;
-        }
-        select:focus, input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
         button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-color: #007bff;
             color: white;
             border: none;
             cursor: pointer;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
         button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            background-color: #0056b3;
         }
         button:disabled {
-            background: #ccc;
+            background-color: #ccc;
             cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
         }
         .loading {
             text-align: center;
-            padding: 40px;
-            color: #667eea;
-            font-size: 1.2em;
-            font-weight: 600;
+            padding: 20px;
+            color: #666;
         }
         .error {
-            background: linear-gradient(135deg, rgba(248, 215, 218, 0.95) 0%, rgba(245, 198, 203, 0.95) 100%);
-            backdrop-filter: blur(5px);
+            background-color: #f8d7da;
             color: #721c24;
-            padding: 15px 20px;
-            border: 2px solid #f5c6cb;
-            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
             margin-bottom: 20px;
-            font-weight: 500;
         }
         .success {
-            background: linear-gradient(135deg, rgba(212, 237, 218, 0.95) 0%, rgba(195, 230, 203, 0.95) 100%);
-            backdrop-filter: blur(5px);
+            background-color: #d4edda;
             color: #155724;
-            padding: 15px 20px;
-            border: 2px solid #c3e6cb;
-            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
             margin-bottom: 20px;
-            font-weight: 500;
         }
         .params-list {
             margin-top: 20px;
@@ -114,23 +82,20 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 15px 20px;
-            border: 2px solid rgba(102, 126, 234, 0.1);
-            margin-bottom: 12px;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(5px);
-            transition: all 0.3s ease;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            background-color: #fafafa;
+            transition: all 0.2s ease;
         }
         .param-item:hover {
-            background: white;
-            border-color: rgba(102, 126, 234, 0.3);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            background-color: #f0f0f0;
+            border-color: #bbb;
         }
         .param-item.hidden {
             opacity: 0.5;
-            background: rgba(245, 245, 245, 0.8);
+            background-color: #f5f5f5;
         }
         .param-info {
             flex: 1;
@@ -150,14 +115,13 @@
             font-size: 16px;
         }
         .param-category {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-            color: #667eea;
-            padding: 4px 12px;
-            border-radius: 15px;
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 2px 8px;
+            border-radius: 12px;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: normal;
             width: fit-content;
-            border: 1px solid rgba(102, 126, 234, 0.2);
         }
         .param-details {
             display: flex;
@@ -168,10 +132,7 @@
         }
         .param-value {
             font-weight: bold;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #007bff;
             min-width: 80px;
         }
         .param-range {
@@ -179,60 +140,49 @@
             color: #888;
         }
         .hide-btn {
-            padding: 8px 20px;
+            padding: 8px 16px;
             border: none;
-            border-radius: 20px;
+            border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s ease;
+            font-weight: 500;
+            transition: all 0.2s ease;
             min-width: 100px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         .hide-btn.hide {
-            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            background-color: #ffc107;
             color: #333;
         }
         .hide-btn.hide:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+            background-color: #e0a800;
         }
         .hide-btn.show {
-            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+            background-color: #6c757d;
             color: white;
         }
         .hide-btn.show:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+            background-color: #5a6268;
         }
         .stats {
             display: flex;
             gap: 20px;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: rgba(102, 126, 234, 0.1);
-            backdrop-filter: blur(5px);
-            border-radius: 15px;
-            border: 2px solid rgba(102, 126, 234, 0.2);
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 6px;
         }
         .stat-item {
             text-align: center;
-            flex: 1;
         }
         .stat-number {
-            font-size: 32px;
+            font-size: 24px;
             font-weight: bold;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #007bff;
         }
         .stat-label {
             font-size: 12px;
             color: #666;
             text-transform: uppercase;
-            font-weight: 600;
-            margin-top: 5px;
         }
         .nav-menu {
             position: fixed;
@@ -241,31 +191,26 @@
             display: flex;
             gap: 10px;
             z-index: 1000;
-            flex-wrap: wrap;
         }
         .nav-link {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            color: #667eea;
+            background: white;
+            color: #007bff;
             text-decoration: none;
-            padding: 12px 24px;
-            border-radius: 25px;
+            padding: 10px 20px;
+            border-radius: 6px;
             font-weight: 600;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            border: 2px solid rgba(102, 126, 234, 0.2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .nav-link:hover {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #007bff;
             color: white;
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-            border-color: transparent;
+            box-shadow: 0 4px 8px rgba(0,123,255,0.3);
         }
         .nav-link.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #007bff;
             color: white;
-            border-color: transparent;
         }
     </style>
 </head>
@@ -275,13 +220,11 @@
         <a href="/params" class="nav-link">Params</a>
         <a href="/spotparams" class="nav-link active">Spot Params</a>
         <a href="/settings" class="nav-link">Settings</a>
-        <a href="/setup" class="nav-link">SavvyCAN</a>
-        <a href="/firmware" class="nav-link">Update</a>
+        <a href="/update" class="nav-link">Update</a>
     </nav>
 
     <div class="container">
         <h1>Spot Parameters Manager</h1>
-        <p class="subtitle">View and manage real-time VCU spot values</p>
 
         <div id="message"></div>
 

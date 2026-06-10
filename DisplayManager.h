@@ -4,6 +4,8 @@
 #include <lvgl.h>
 #include "CanSDO.h"
 #include <ArduinoJson.h>
+#include <APA102.h>
+#include "pin_config.h"
 
 #define MAX_PARAMETERS 150
 
@@ -24,16 +26,18 @@ struct Parameter {
 #define GEARSETTINGSCREEN        2
 #define MOTORSETTINGSCREEN       3
 #define REGENSETTINGSCREEN       4
-#define SETTINGSMAINSCREEN       5
+#define PARAMSMAINSCREEN         5
 #define SPOTPARAMSMAINSCREEN     6
+#define SETTINGSMAINSCREEN       7
 
-#define PARAMETERSCREEN          7
-#define SPOTPARAMSCREEN          8
+#define PARAMETERSCREEN          8
+#define SPOTPARAMSCREEN          9
 
-#define LASTSCREEN               6
+#define LASTSCREEN               7
 
-// Forward declaration
+// Forward declarations
 class DataRetriever;
+class SerialCommandHandler;
 
 class DisplayManager
 {
@@ -64,10 +68,16 @@ class DisplayManager
       void RequestSpotParameterUpdate();
       int GetCurrentSpotParameterId();
       void SetDataRetriever(DataRetriever* retriever);
+      void SetSerialCommandHandler(SerialCommandHandler* handler);
+      void ShowLoadingScreen(const char* message, int progress);
+      void HideLoadingScreen();
+      void ShowErrorMessage(const char* title, const char* message, int displayTimeMs = 3000);
+      void UpdateLEDFuelGauge();
 
 
    private:
       CanSDO &canSDO;
+      SerialCommandHandler* serialCommandHandler;
       int screenIndex = 0;
       int gearSetting = 0;
       int motorSetting = 0;
@@ -83,8 +93,11 @@ class DisplayManager
       bool isEditing = false;
       bool inSettingsMode = false;
       bool inSpotParams = false;
+      bool inSettingsMenu = false;
       bool isEditingParam = false;
       float tempParamValue = 0.0f;
+      int settingsMenuOption = 0;  // 0 = Rotate, 1 = Fetch
+      int currentRotation = 0;  // 0-3 for 0°, 90°, 180°, 270°
       
       // Parameters from JSON
       Parameter parameters[MAX_PARAMETERS];
@@ -99,13 +112,30 @@ class DisplayManager
       // Reference to data retriever for immediate updates
       DataRetriever* dataRetriever;
 
+      // Loading screen objects
+      lv_obj_t* loadingScreen = nullptr;
+      lv_obj_t* loadingLabel = nullptr;
+      lv_obj_t* loadingBar = nullptr;
+
+      // Error message tracking
+      unsigned long errorDisplayStart = 0;
+      int errorDisplayDuration = 0;
+      bool errorMessageShown = false;
+
+      // Debug label for HeatReq
+      lv_obj_t* debugLabel = nullptr;
+
+      // LED strip for debugging
+      static APA102<PIN_APA102_DI, PIN_APA102_CLK> ledStrip;
+
       void Screen1Refresh();
       void Screen2Refresh();
       void Screen3Refresh();
       void Screen4Refresh();
       void Screen5Refresh();
-      void SettingsMainRefresh();
+      void ParamsMainRefresh();
       void SpotParameterMainRefresh();
+      void SettingsMainRefresh();
       void ParameterScreenRefresh();
       void SpotParameterScreenRefresh();
       

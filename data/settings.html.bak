@@ -212,57 +212,6 @@
             color: #dc2626;
             border: 1px solid rgba(239, 68, 68, 0.2);
         }
-
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-        }
-
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: 0.4s;
-            border-radius: 34px;
-        }
-
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: 0.4s;
-            border-radius: 50%;
-        }
-
-        .toggle-switch input:checked + .toggle-slider {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .toggle-switch input:checked + .toggle-slider:before {
-            transform: translateX(26px);
-        }
-
-        .toggle-container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
     </style>
 </head>
 <body>
@@ -271,8 +220,7 @@
         <a href="/params" class="nav-link">Params</a>
         <a href="/spotparams" class="nav-link">Spot Params</a>
         <a href="/settings" class="nav-link active">Settings</a>
-        <a href="/setup" class="nav-link">SavvyCAN</a>
-        <a href="/firmware" class="nav-link">Update</a>
+        <a href="/update" class="nav-link">Update</a>
     </nav>
 
     <div class="container">
@@ -306,23 +254,6 @@
             </div>
         </div>
 
-        <div class="settings-section">
-            <div class="section-title">Serial Relay</div>
-
-            <div class="setting-item">
-                <div class="toggle-container">
-                    <div>
-                        <div class="setting-name">Enable Serial Command Relay</div>
-                        <div class="setting-description">Forward serial commands to VCU and send timeout values when idle</div>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="serialRelayEnabled" checked>
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
         <div class="button-group">
             <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
         </div>
@@ -348,10 +279,6 @@
                             rotationRadio.checked = true;
                         }
                     }
-
-                    if (settings.serialRelayEnabled !== undefined) {
-                        document.getElementById('serialRelayEnabled').checked = settings.serialRelayEnabled;
-                    }
                 }
             } catch (error) {
                 console.log('Using default settings');
@@ -360,11 +287,9 @@
 
         async function saveSettings() {
             const rotation = document.querySelector('input[name="rotation"]:checked').value;
-            const serialRelayEnabled = document.getElementById('serialRelayEnabled').checked;
 
             const settings = {
-                rotation: parseInt(rotation),
-                serialRelayEnabled: serialRelayEnabled
+                rotation: parseInt(rotation)
             };
 
             try {
@@ -377,7 +302,7 @@
                 });
 
                 if (response.ok) {
-                    showMessage('Settings saved successfully!', 'success');
+                    showMessage('Settings saved successfully! Display will rotate to ' + rotation + '°', 'success');
                 } else {
                     throw new Error('Failed to save settings');
                 }

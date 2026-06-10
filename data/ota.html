@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Firmware Update — ZombieVerter</title>
+<style>
+  :root {
+    --bg: #0f172a; --card: #1e293b; --border: #334155;
+    --text: #f1f5f9; --muted: #94a3b8;
+    --green: #22c55e; --red: #ef4444; --cyan: #06b6d4; --yellow: #eab308;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: var(--bg); color: var(--text); min-height: 100vh;
+         display: flex; flex-direction: column; align-items: center;
+         padding: 2rem 1rem; }
+
+  h1 { color: var(--cyan); font-size: 1.5rem; margin-bottom: 0.3rem; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+
+  .card { background: var(--card); border: 1px solid var(--border);
+          border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 500px;
+          margin-bottom: 1.25rem; }
+  .card h2 { font-size: 1rem; color: var(--cyan); margin-bottom: 1rem; }
+
+  .drop-zone {
+    border: 2px dashed var(--border); border-radius: 8px;
+    padding: 2rem; text-align: center; cursor: pointer;
+    transition: border-color .2s, background .2s;
+    margin-bottom: 1rem;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--cyan); background: rgba(6,182,212,.05);
+  }
+  .drop-zone p { color: var(--muted); font-size: 0.9rem; }
+  .drop-zone .file-name { color: var(--cyan); margin-top: 0.5rem;
+                           font-size: 0.85rem; display: none; }
+  #fileInput { display: none; }
+
+  .progress-wrap { display: none; margin-bottom: 1rem; }
+  .progress-track { background: var(--border); border-radius: 6px;
+                    height: 12px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--cyan); width: 0%;
+                   transition: width .3s; border-radius: 6px; }
+  .progress-label { font-size: 0.8rem; color: var(--muted);
+                    margin-top: 4px; text-align: center; }
+
+  .status-box { padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.9rem;
+                display: none; margin-bottom: 1rem; }
+  .status-box.ok  { background: rgba(34,197,94,.15); color: var(--green);
+                    border: 1px solid var(--green); }
+  .status-box.err { background: rgba(239,68,68,.15); color: var(--red);
+                    border: 1px solid var(--red); }
+  .status-box.info { background: rgba(6,182,212,.1); color: var(--cyan);
+                     border: 1px solid var(--cyan); }
+
+  .btn { padding: 10px 24px; border-radius: 6px; border: none; cursor: pointer;
+         font-size: 0.9rem; font-weight: 600; transition: opacity .15s; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.primary { background: var(--cyan); color: #000; }
+  .btn.primary:hover:not(:disabled) { opacity: .85; }
+  .btn.back { background: var(--border); color: var(--text); }
+  .btn.back:hover { opacity: .75; }
+
+  .warning { background: rgba(234,179,8,.1); border: 1px solid var(--yellow);
+             border-radius: 6px; padding: 0.75rem 1rem; font-size: 0.85rem;
+             color: #fde68a; margin-bottom: 1rem; }
+  .warning strong { display: block; margin-bottom: 4px; }
+
+  .refetch-card .card h2 { color: var(--green); }
+  #refetchStatus { margin-top: 0.75rem; }
+
+  footer { margin-top: 2rem; color: var(--muted); font-size: 0.8rem; }
+  footer a { color: var(--cyan); text-decoration: none; }
+
+  .nav-menu {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 1000;
+  }
+  .nav-link {
+    background: var(--card);
+    color: var(--cyan);
+    text-decoration: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+  }
+  .nav-link:hover {
+    background: var(--cyan);
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(6,182,212,0.3);
+  }
+  .nav-link.active {
+    background: var(--cyan);
+    color: #000;
+  }
+</style>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ZV Display">
+<meta name="theme-color" content="#00bcd4">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+</head>
+<body>
+
+<nav class="nav-menu">
+  <a href="/" class="nav-link">Upload</a>
+  <a href="/params" class="nav-link">Params</a>
+  <a href="/spotparams" class="nav-link">Spot Params</a>
+  <a href="/settings" class="nav-link">Settings</a>
+  <a href="/can" class="nav-link">CAN</a>
+  <a href="/ota" class="nav-link active">OTA</a>
+  <a href="/setup" class="nav-link">Setup</a>
+  <a href="/firmware" class="nav-link">Update</a>
+</nav>
+
+<h1>⚡ ZombieVerter Dial Display</h1>
+<p class="sub">Firmware Update &amp; Parameter Management</p>
+
+<!-- OTA Update -->
+<div class="card">
+  <h2>🔧 OTA Firmware Update</h2>
+
+  <div class="warning">
+    <strong>⚠ Before updating:</strong>
+    Upload a <code>.bin</code> firmware file compiled from PlatformIO.
+    The device will reboot automatically when complete.
+    Do not disconnect power during the update.
+  </div>
+
+  <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <p>Drag &amp; drop firmware.bin here, or click to select</p>
+    <p class="file-name" id="fileName"></p>
+    <input type="file" id="fileInput" accept=".bin">
+  </div>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <p class="progress-label" id="progressLabel">Uploading...</p>
+  </div>
+
+  <div class="status-box" id="otaStatus"></div>
+
+  <button class="btn primary" id="uploadBtn" onclick="startOTA()" disabled>
+    ⬆ Upload Firmware
+  </button>
+</div>
+
+<a href="/"><button class="btn back">← Back to Dashboard</button></a>
+
+<footer>ZombieVerter Dial Display &nbsp;·&nbsp; <a href="https://github.com/robertwa1974/Zombieverter-Dial-Display">GitHub</a></footer>
+
+<script>
+// ============================================================================
+// Drag and drop
+// ============================================================================
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+let selectedFile = null;
+
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) selectFile(f);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) selectFile(fileInput.files[0]);
+});
+
+function selectFile(f) {
+  if (!f.name.endsWith('.bin')) {
+    showStatus('otaStatus', 'err', 'Please select a .bin firmware file');
+    return;
+  }
+  selectedFile = f;
+  document.getElementById('fileName').textContent = `${f.name} (${(f.size/1024).toFixed(1)} KB)`;
+  document.getElementById('fileName').style.display = 'block';
+  document.getElementById('uploadBtn').disabled = false;
+  hideStatus('otaStatus');
+}
+
+// ============================================================================
+// OTA Upload
+// ============================================================================
+function startOTA() {
+  if (!selectedFile) return;
+  if (!confirm(`Upload ${selectedFile.name} and reboot the device?`)) return;
+
+  const formData = new FormData();
+  formData.append('update', selectedFile, selectedFile.name);
+
+  document.getElementById('uploadBtn').disabled = true;
+  document.getElementById('progressWrap').style.display = 'block';
+  showStatus('otaStatus', 'info', 'Uploading firmware...');
+
+  const xhr = new XMLHttpRequest();
+
+  xhr.upload.addEventListener('progress', e => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressLabel').textContent =
+        `${pct}% — ${(e.loaded/1024).toFixed(0)} / ${(e.total/1024).toFixed(0)} KB`;
+    }
+  });
+
+  xhr.addEventListener('load', () => {
+    if (xhr.status === 200) {
+      showStatus('otaStatus', 'ok',
+        '✓ Upload complete — device is rebooting. Reconnect in ~10 seconds.');
+      document.getElementById('progressFill').style.width = '100%';
+      document.getElementById('progressLabel').textContent = 'Complete';
+    } else {
+      showStatus('otaStatus', 'err', `Upload failed: ${xhr.responseText}`);
+      document.getElementById('uploadBtn').disabled = false;
+    }
+  });
+
+  xhr.addEventListener('error', () => {
+    // Connection drop on reboot = actually success
+    showStatus('otaStatus', 'ok',
+      '✓ Upload complete — device is rebooting. Reconnect in ~10 seconds.');
+  });
+
+  xhr.open('POST', '/update');
+  xhr.send(formData);
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+function showStatus(id, type, msg) {
+  const el = document.getElementById(id);
+  el.className = 'status-box ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideStatus(id) {
+  document.getElementById(id).style.display = 'none';
+}
+</script>
+<script>
+let wakeLock = null;
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {}
+  }
+}
+async function releaseWakeLock() {
+  if (wakeLock) { await wakeLock.release(); wakeLock = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestWakeLock();
+  else releaseWakeLock();
+});
+requestWakeLock();
+</script>
+</body>
+</html>

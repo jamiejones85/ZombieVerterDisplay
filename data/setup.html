@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SavvyCAN - ZombieVerter Display</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 80px 20px 20px;
+        }
+
+        .nav-menu {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .nav-link {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-link:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-link.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+            text-align: center;
+        }
+
+        .setup-section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 15px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .setting-item {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .setting-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .setting-description {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 15px;
+        }
+
+        .status-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-box.running {
+            background: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .status-box.stopped {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .status-dot.running {
+            background: #16a34a;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.stopped {
+            background: #dc2626;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            padding: 15px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .info-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background: #22c55e;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        .message.success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-menu">
+        <a href="/" class="nav-link">Upload</a>
+        <a href="/params" class="nav-link">Params</a>
+        <a href="/spotparams" class="nav-link">Spot Params</a>
+        <a href="/settings" class="nav-link">Settings</a>
+        <a href="/setup" class="nav-link active">SavvyCAN</a>
+        <a href="/firmware" class="nav-link">Update</a>
+    </nav>
+
+    <div class="container">
+        <h1>SavvyCAN Integration</h1>
+        <p class="subtitle">GVRET TCP Server</p>
+
+        <div class="setup-section">
+            <div class="section-title">GVRET TCP Server</div>
+
+            <div class="setting-item">
+                <div class="setting-name">SavvyCAN Integration</div>
+                <div class="setting-description">
+                    TCP server on port 23 implementing the GVRET binary protocol for SavvyCAN compatibility.
+                    Connect SavvyCAN to this device's IP address on port 23 to monitor and transmit CAN frames in real-time.
+                </div>
+
+                <div id="statusBox" class="status-box stopped">
+                    <div class="status-dot stopped"></div>
+                    <span id="statusText">Server Stopped</span>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Server Port</div>
+                        <div class="info-value">23</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Connected Clients</div>
+                        <div class="info-value" id="clientCount">0</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Protocol</div>
+                        <div class="info-value">GVRET</div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" id="startBtn" onclick="startServer()">
+                        Start Server
+                    </button>
+                    <button class="btn btn-danger" id="stopBtn" onclick="stopServer()" disabled>
+                        Stop Server
+                    </button>
+                </div>
+
+                <div class="message" id="message"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let statusInterval = null;
+
+        window.addEventListener('load', () => {
+            checkStatus();
+            statusInterval = setInterval(checkStatus, 2000);
+        });
+
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/gvret/status');
+                const data = await response.json();
+                updateUI(data.running, data.clientCount || 0);
+            } catch (error) {
+                console.error('Failed to check status:', error);
+            }
+        }
+
+        async function startServer() {
+            try {
+                document.getElementById('startBtn').disabled = true;
+                showMessage('Starting GVRET server...', 'success');
+
+                const response = await fetch('/api/gvret/start', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('GVRET server started successfully', 'success');
+                    setTimeout(checkStatus, 500);
+                } else {
+                    showMessage('Failed to start server: ' + (data.error || 'Unknown error'), 'error');
+                    document.getElementById('startBtn').disabled = false;
+                }
+            } catch (error) {
+                showMessage('Failed to start server: ' + error.message, 'error');
+                document.getElementById('startBtn').disabled = false;
+            }
+        }
+
+        async function stopServer() {
+            try {
+                document.getElementById('stopBtn').disabled = true;
+                showMessage('Stopping GVRET server...', 'success');
+
+                const response = await fetch('/api/gvret/stop', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('GVRET server stopped successfully', 'success');
+                    setTimeout(checkStatus, 500);
+                } else {
+                    showMessage('Failed to stop server: ' + (data.error || 'Unknown error'), 'error');
+                    document.getElementById('stopBtn').disabled = false;
+                }
+            } catch (error) {
+                showMessage('Failed to stop server: ' + error.message, 'error');
+                document.getElementById('stopBtn').disabled = false;
+            }
+        }
+
+        function updateUI(running, clientCount) {
+            const statusBox = document.getElementById('statusBox');
+            const statusText = document.getElementById('statusText');
+            const statusDot = statusBox.querySelector('.status-dot');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const clientCountEl = document.getElementById('clientCount');
+
+            if (running) {
+                statusBox.className = 'status-box running';
+                statusDot.className = 'status-dot running';
+                statusText.textContent = 'Server Running';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            } else {
+                statusBox.className = 'status-box stopped';
+                statusDot.className = 'status-dot stopped';
+                statusText.textContent = 'Server Stopped';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+
+            clientCountEl.textContent = clientCount;
+        }
+
+        function showMessage(text, type) {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.className = 'message ' + type;
+            message.style.display = 'block';
+
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

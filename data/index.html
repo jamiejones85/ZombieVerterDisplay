@@ -204,13 +204,23 @@
         <a href="/params" class="nav-link">Params</a>
         <a href="/spotparams" class="nav-link">Spot Params</a>
         <a href="/settings" class="nav-link">Settings</a>
-        <a href="/update" class="nav-link">Update</a>
+        <a href="/setup" class="nav-link">SavvyCAN</a>
+        <a href="/firmware" class="nav-link">Update</a>
     </nav>
 
     <div class="upload-container">
-        <h1>JSON File Upload</h1>
+        <h1>Parameter Management</h1>
         <p class="subtitle">ZombieVerterDisplay Configuration</p>
-        
+
+        <div style="margin-bottom: 30px;">
+            <button class="upload-btn" id="fetchBtn" onclick="fetchFromVCU()" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); margin-bottom: 20px;">
+                🔄 Fetch params.json from VCU
+            </button>
+            <div id="fetchMessage" class="message" style="display: none;"></div>
+        </div>
+
+        <h2 style="text-align: center; color: #666; margin-bottom: 20px; font-size: 1.3em;">Or Upload JSON File</h2>
+
         <form id="uploadForm" enctype="multipart/form-data">
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📄</div>
@@ -373,6 +383,44 @@
             fileInfo.style.display = 'none';
             uploadBtn.disabled = true;
             hideMessage();
+        }
+
+        // Fetch params.json from VCU
+        async function fetchFromVCU() {
+            const fetchBtn = document.getElementById('fetchBtn');
+            const fetchMessage = document.getElementById('fetchMessage');
+
+            fetchBtn.disabled = true;
+            fetchBtn.textContent = '⏳ Fetching from VCU...';
+            fetchMessage.style.display = 'block';
+            fetchMessage.className = 'message';
+            fetchMessage.textContent = 'Requesting parameters from VCU via CAN... This may take 10-30 seconds.';
+            fetchMessage.style.background = 'rgba(6,182,212,0.1)';
+            fetchMessage.style.color = '#0891b2';
+
+            try {
+                const response = await fetch('/api/fetch-params', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    fetchMessage.className = 'message success';
+                    fetchMessage.textContent = data.message || 'Parameters fetched successfully from VCU!';
+
+                    // Reload the page after a delay to show the new params
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    fetchMessage.className = 'message error';
+                    fetchMessage.textContent = data.error || 'Failed to fetch parameters from VCU';
+                }
+            } catch (error) {
+                fetchMessage.className = 'message error';
+                fetchMessage.textContent = 'Error: ' + error.message;
+            } finally {
+                fetchBtn.disabled = false;
+                fetchBtn.textContent = '🔄 Fetch params.json from VCU';
+            }
         }
     </script>
 </body>

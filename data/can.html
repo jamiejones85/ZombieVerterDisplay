@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAN Monitor — ZombieVerter</title>
+<style>
+  :root {
+    --bg:     #0f172a;
+    --card:   #1e293b;
+    --border: #334155;
+    --text:   #f1f5f9;
+    --muted:  #94a3b8;
+    --green:  #22c55e;
+    --yellow: #eab308;
+    --red:    #ef4444;
+    --cyan:   #06b6d4;
+    --orange: #f97316;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', monospace; background: var(--bg); color: var(--text); font-size: 15px; }
+
+  /* ---- Top bar ---- */
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px; background: var(--card);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .topbar h1 { font-size: 16px; color: var(--cyan); font-family: sans-serif; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+  .status-dot.connected { background: var(--green); }
+  #statusText { color: var(--muted); font-size: 13px; font-family: sans-serif; }
+  .fps-badge { background: var(--border); padding: 2px 8px; border-radius: 10px;
+               font-size: 12px; color: var(--yellow); margin-left: auto; }
+
+  /* ---- Tabs ---- */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--card); }
+  .tab { padding: 10px 18px; cursor: pointer; font-family: sans-serif; font-size: 14px;
+         color: var(--muted); border-bottom: 2px solid transparent; transition: all .15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
+  /* ---- Panel layout ---- */
+  .panels { display: flex; height: calc(100vh - 90px); overflow: hidden; }
+  .panel { display: none; flex-direction: column; width: 100%; overflow: hidden; }
+  .panel.active { display: flex; }
+
+  /* ---- Traffic panel ---- */
+  .traffic-toolbar {
+    display: flex; gap: 8px; align-items: center; padding: 6px 10px;
+    background: var(--card); border-bottom: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .btn {
+    padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); cursor: pointer; font-size: 12px;
+    font-family: sans-serif; transition: background .1s;
+  }
+  .btn:hover { background: var(--border); }
+  .btn.primary { background: var(--cyan); color: #000; border-color: var(--cyan); }
+  .btn.primary:hover { opacity: .85; }
+  .btn.danger { background: var(--red); color: #fff; border-color: var(--red); }
+  .btn.danger:hover { opacity: .85; }
+  .btn.success { background: var(--green); color: #000; border-color: var(--green); }
+  .btn.success:hover { opacity: .85; }
+  .btn.warn { background: var(--yellow); color: #000; border-color: var(--yellow); }
+
+  #filterInput {
+    padding: 4px 8px; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); border-radius: 4px; width: 180px; font-size: 12px;
+  }
+  select.small {
+    padding: 4px 6px; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); border-radius: 4px; font-size: 12px; cursor: pointer;
+  }
+
+  /* ---- Traffic table ---- */
+  .traffic-wrap { flex: 1; overflow-y: auto; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th { position: sticky; top: 0; background: #0d1a2d; padding: 5px 8px;
+       text-align: left; font-size: 13px; color: var(--muted); font-weight: 600;
+       border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 4px 8px; border-bottom: 1px solid #1a2740; white-space: nowrap;
+       overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+  tr:hover td { background: #1a2740; }
+
+  /* Column widths */
+  .col-ts    { width: 80px; }
+  .col-id    { width: 70px; }
+  .col-name  { width: 130px; }
+  .col-len   { width: 40px; }
+  .col-data  { width: 200px; font-family: 'Courier New', monospace; }
+  .col-dec   { width: auto; color: var(--yellow); }
+  .col-cnt   { width: 60px; text-align: right; color: var(--muted); }
+
+  .id-cell   { color: var(--cyan); font-weight: bold; }
+  .name-cell { color: var(--muted); font-size: 11px; }
+  .data-cell { color: var(--green); letter-spacing: 1px; }
+  .dec-cell  { color: var(--yellow); font-size: 11px; }
+
+  /* Highlight colours for IDs */
+  .hl-red    td { background: rgba(239,68,68,.12) !important; }
+  .hl-green  td { background: rgba(34,197,94,.12) !important; }
+  .hl-blue   td { background: rgba(59,130,246,.12) !important; }
+  .hl-yellow td { background: rgba(234,179,8,.12) !important; }
+  .hl-orange td { background: rgba(249,115,22,.12) !important; }
+
+  /* ---- Filter panel ---- */
+  .filter-panel { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+  .filter-section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .filter-section h3 { font-family: sans-serif; font-size: 13px; margin-bottom: 10px; color: var(--cyan); }
+  .filter-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  .filter-row label { color: var(--muted); font-family: sans-serif; font-size: 12px; min-width: 80px; }
+  .filter-row input[type=text] {
+    flex: 1; padding: 5px 8px; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); border-radius: 4px; font-size: 12px; min-width: 120px;
+  }
+  .highlight-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .hl-swatch { width: 20px; height: 20px; border-radius: 3px; cursor: pointer; border: 2px solid transparent; }
+  .hl-swatch.sel { border-color: white; }
+  .quick-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* ---- Transmit panel ---- */
+  .tx-panel { padding: 16px; display: flex; flex-direction: column; gap: 16px; max-width: 700px; }
+  .tx-section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .tx-section h3 { font-family: sans-serif; font-size: 13px; margin-bottom: 12px; color: var(--cyan); }
+  .tx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; }
+  .tx-grid input { padding: 6px; background: var(--bg); border: 1px solid var(--border);
+                   color: var(--green); border-radius: 4px; font-size: 13px; text-align: center;
+                   font-family: 'Courier New', monospace; width: 100%; }
+  .tx-id-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .tx-id-row label { color: var(--muted); font-size: 12px; font-family: sans-serif; min-width: 60px; }
+  .tx-id-row input { padding: 5px 8px; background: var(--bg); border: 1px solid var(--border);
+                     color: var(--cyan); border-radius: 4px; font-size: 13px; width: 100px;
+                     font-family: 'Courier New', monospace; }
+  .tx-preview { padding: 8px 12px; background: var(--bg); border-radius: 4px;
+                font-family: 'Courier New', monospace; color: var(--green); font-size: 12px;
+                margin: 10px 0; border: 1px solid var(--border); min-height: 30px; }
+  .tx-result { padding: 6px 10px; border-radius: 4px; font-size: 12px; font-family: sans-serif;
+               margin-top: 6px; display: none; }
+  .tx-result.ok  { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid var(--green); }
+  .tx-result.err { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid var(--red); }
+
+  /* SDO builder */
+  .sdo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .sdo-field { display: flex; flex-direction: column; gap: 4px; }
+  .sdo-field label { font-size: 11px; color: var(--muted); font-family: sans-serif; }
+  .sdo-field input, .sdo-field select {
+    padding: 5px 6px; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); border-radius: 4px; font-size: 12px;
+  }
+  .sdo-field select { cursor: pointer; }
+
+  /* ---- Log panel ---- */
+  .log-panel { padding: 16px; display: flex; flex-direction: column; gap: 16px; max-width: 700px; }
+  .log-section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .log-section h3 { font-family: sans-serif; font-size: 13px; margin-bottom: 12px; color: var(--cyan); }
+  .log-status { font-family: sans-serif; font-size: 13px; padding: 10px; border-radius: 6px;
+                background: var(--bg); border: 1px solid var(--border); margin-bottom: 12px; }
+  .log-status.logging { border-color: var(--red); color: var(--red); }
+  .log-status.stopped { border-color: var(--green); color: var(--green); }
+  .stats-table { width: 100%; border-collapse: collapse; }
+  .stats-table td { padding: 4px 8px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .stats-table td:first-child { color: var(--cyan); }
+  .stats-table td:last-child { text-align: right; color: var(--yellow); }
+  #topIds { margin-top: 10px; }
+  .id-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .id-bar-label { width: 90px; color: var(--cyan); font-size: 11px; }
+  .id-bar-name  { width: 120px; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+  .id-bar-track { flex: 1; background: var(--border); border-radius: 3px; height: 12px; overflow: hidden; }
+  .id-bar-fill  { height: 100%; background: var(--cyan); border-radius: 3px; transition: width .3s; }
+  .id-bar-count { width: 60px; text-align: right; color: var(--yellow); font-size: 11px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Navigation menu */
+  .nav-menu {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 1000;
+  }
+  .nav-link {
+    background: var(--card);
+    color: var(--cyan);
+    text-decoration: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+    font-family: sans-serif;
+    font-size: 12px;
+  }
+  .nav-link:hover {
+    background: var(--cyan);
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(6,182,212,0.3);
+  }
+  .nav-link.active {
+    background: var(--cyan);
+    color: #000;
+  }
+</style>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ZV Display">
+<meta name="theme-color" content="#00bcd4">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+</head>
+<body>
+
+<nav class="nav-menu">
+  <a href="/" class="nav-link">Upload</a>
+  <a href="/params" class="nav-link">Params</a>
+  <a href="/spotparams" class="nav-link">Spot Params</a>
+  <a href="/settings" class="nav-link">Settings</a>
+  <a href="/can" class="nav-link active">CAN</a>
+  <a href="/ota" class="nav-link">OTA</a>
+  <a href="/setup" class="nav-link">Setup</a>
+  <a href="/firmware" class="nav-link">Update</a>
+</nav>
+
+<!-- Top bar -->
+<div class="topbar">
+  <h1>⚡ CAN Monitor</h1>
+  <div class="status-dot" id="wsDot"></div>
+  <span id="statusText">Disconnected</span>
+  <span class="fps-badge" id="fpsBadge">0 fps</span>
+  <a href="/" style="margin-left:auto;color:var(--muted);font-family:sans-serif;font-size:12px;text-decoration:none;">← Back</a>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('traffic')">Traffic</div>
+  <div class="tab" onclick="switchTab('filter')">Filter</div>
+  <div class="tab" onclick="switchTab('transmit')">Transmit</div>
+  <div class="tab" onclick="switchTab('log')">Log & Stats</div>
+</div>
+
+<!-- ================================================================ TRAFFIC -->
+<div class="panel active" id="panel-traffic">
+  <div class="traffic-toolbar">
+    <button class="btn primary" id="btnPause" onclick="togglePause()">⏸ Pause</button>
+    <button class="btn" onclick="clearTraffic()">🗑 Clear</button>
+    <span style="color:var(--muted);font-family:sans-serif;font-size:11px;">Filter:</span>
+    <select class="small" id="filterMode" onchange="applyFilter()">
+      <option value="all">Show all</option>
+      <option value="only">Show only IDs:</option>
+      <option value="hide">Hide IDs:</option>
+    </select>
+    <input id="filterInput" type="text" placeholder="0x583,0x355,..." oninput="applyFilter()">
+    <span style="color:var(--muted);font-family:sans-serif;font-size:11px;margin-left:8px;">
+      Rows: <span id="rowCount">0</span>
+    </span>
+  </div>
+  <div class="traffic-wrap">
+    <table id="trafficTable">
+      <thead>
+        <tr>
+          <th class="col-ts">Time(ms)</th>
+          <th class="col-id">ID</th>
+          <th class="col-name">Name</th>
+          <th class="col-len">Len</th>
+          <th class="col-data">Data (hex)</th>
+          <th class="col-dec">Decoded</th>
+          <th class="col-cnt">Count</th>
+        </tr>
+      </thead>
+      <tbody id="trafficBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ================================================================ FILTER -->
+<div class="panel" id="panel-filter">
+  <div class="filter-panel">
+    <div class="filter-section">
+      <h3>Quick Filters</h3>
+      <div class="quick-btns">
+        <button class="btn" onclick="quickFilter('hide','0x603,0x583')">Hide SDO</button>
+        <button class="btn" onclick="quickFilter('hide','0x355,0x356,0x126,0x257,0x522,0x411,0x373')">Hide broadcasts</button>
+        <button class="btn" onclick="quickFilter('only','0x583')">SDO responses only</button>
+        <button class="btn" onclick="quickFilter('only','0x603,0x583')">SDO traffic only</button>
+        <button class="btn" onclick="quickFilter('all','')">Show all</button>
+      </div>
+    </div>
+
+    <div class="filter-section">
+      <h3>Highlight by CAN ID</h3>
+      <p style="color:var(--muted);font-size:11px;margin-bottom:10px;font-family:sans-serif;">
+        Enter a CAN ID and pick a colour to highlight matching rows in the traffic view.
+      </p>
+      <div id="hlRows"></div>
+      <button class="btn" onclick="addHighlightRow()" style="margin-top:8px;">+ Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ TRANSMIT -->
+<div class="panel" id="panel-transmit">
+  <div class="tx-panel">
+
+    <!-- Raw frame -->
+    <div class="tx-section">
+      <h3>Raw Frame</h3>
+      <div class="tx-id-row">
+        <label>CAN ID</label>
+        <input type="text" id="txId" value="0x603" placeholder="0x603" oninput="updateRawPreview()">
+        <label style="margin-left:16px;">Len</label>
+        <input type="number" id="txLen" value="8" min="1" max="8" style="width:50px;" oninput="updateRawPreview()">
+      </div>
+      <div class="tx-grid" id="txBytes">
+        <!-- 8 byte inputs injected by JS -->
+      </div>
+      <div class="tx-preview" id="rawPreview">—</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn warn" onclick="confirmAndSendRaw()">⚡ Send Frame</button>
+      </div>
+      <div class="tx-result" id="rawResult"></div>
+    </div>
+
+    <!-- SDO Builder -->
+    <div class="tx-section">
+      <h3>SDO Builder</h3>
+      <div class="sdo-grid">
+        <div class="sdo-field">
+          <label>Node ID</label>
+          <input type="number" id="sdoNode" value="3" min="1" max="127" oninput="buildSDO()">
+        </div>
+        <div class="sdo-field">
+          <label>Command</label>
+          <select id="sdoCmd" onchange="buildSDO()">
+            <option value="read">Read param</option>
+            <option value="write">Write param</option>
+            <option value="save">Save to flash</option>
+            <option value="reset">Reset VCU</option>
+            <option value="segReq">Segment request</option>
+          </select>
+        </div>
+        <div class="sdo-field">
+          <label>Index (hex)</label>
+          <input type="text" id="sdoIndex" value="0x2100" oninput="buildSDO()">
+        </div>
+        <div class="sdo-field">
+          <label>Subindex</label>
+          <input type="number" id="sdoSub" value="0" min="0" max="255" oninput="buildSDO()">
+        </div>
+        <div class="sdo-field">
+          <label>Value (×32)</label>
+          <input type="number" id="sdoVal" value="0" oninput="buildSDO()">
+        </div>
+      </div>
+      <div class="tx-preview" id="sdoPreview">—</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn warn" onclick="confirmAndSendSDO()">⚡ Send SDO</button>
+        <span style="color:var(--muted);font-size:11px;font-family:sans-serif;">
+          Raw value sent = display value × 32
+        </span>
+      </div>
+      <div class="tx-result" id="sdoResult"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ================================================================ LOG -->
+<div class="panel" id="panel-log">
+  <div class="log-panel">
+
+    <div class="log-section">
+      <h3>CSV Logging</h3>
+      <div class="log-status" id="logStatus">Idle — press Start to record</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn success" id="btnLogStart" onclick="logStart()">▶ Start Recording</button>
+        <button class="btn danger"  id="btnLogStop"  onclick="logStop()" disabled>⏹ Stop Recording</button>
+        <button class="btn primary" id="btnLogDl"    onclick="logDownload()" disabled>⬇ Download CSV</button>
+      </div>
+      <p style="color:var(--muted);font-size:11px;font-family:sans-serif;margin-top:10px;">
+        Captures every CAN frame to /canlog.csv on the device. Download after stopping.
+        CSV columns: timestamp_ms, id_hex, id_name, len, b0–b7, decoded.
+      </p>
+    </div>
+
+    <div class="log-section">
+      <h3>Session Statistics</h3>
+      <table class="stats-table" id="statsTable">
+        <tr><td>Total frames</td><td id="statTotal">—</td></tr>
+        <tr><td>Frames/sec</td><td id="statFps">—</td></tr>
+        <tr><td>Session uptime</td><td id="statUptime">—</td></tr>
+      </table>
+      <div id="topIds"></div>
+      <button class="btn" onclick="refreshStats()" style="margin-top:10px;">↻ Refresh</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// State
+// ============================================================================
+let ws = null;
+let paused = false;
+let autoScroll = true;
+
+// Rows keyed by CAN ID — update in place rather than appending duplicates
+const rowMap = {};       // id → <tr> element
+const rowOrder = [];     // insertion order for display
+
+let filterMode = 'all';
+let filterIds  = [];
+const highlights = {};   // id (string) → colour class
+
+let fpsCounter = 0;
+let lastFpsTime = Date.now();
+
+let logState = 'idle';   // idle | logging | stopped
+
+// ============================================================================
+// WebSocket keep-alive — ping every 5s to prevent server dropping connection
+// ============================================================================
+let pingInterval = null;
+
+function startPing() {
+  if (pingInterval) clearInterval(pingInterval);
+  pingInterval = setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      sendWS({ cmd: 'ping' });
+    }
+  }, 5000);
+}
+
+function stopPing() {
+  if (pingInterval) { clearInterval(pingInterval); pingInterval = null; }
+}
+
+// ============================================================================
+// WebSocket
+// ============================================================================
+function connect() {
+  const url = `ws://${location.host}/ws/can`;
+  ws = new WebSocket(url);
+
+  ws.onopen = () => {
+    setStatus(true);
+    startPing();
+  };
+
+  ws.onclose = () => {
+    // Small delay before showing disconnected to avoid flash during brief reconnects
+    setTimeout(() => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) setStatus(false);
+    }, 1500);
+    stopPing();
+    setTimeout(connect, 3000);  // auto-reconnect
+  };
+
+  ws.onerror = () => {
+    setStatus(false);
+  };
+
+  ws.onmessage = (evt) => {
+    try {
+      const msg = JSON.parse(evt.data);
+      handleMessage(msg);
+    } catch(e) {}
+  };
+}
+
+function setStatus(connected) {
+  document.getElementById('wsDot').className = 'status-dot' + (connected ? ' connected' : '');
+  document.getElementById('statusText').textContent = connected ? 'Connected' : 'Disconnected';
+}
+
+function sendWS(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(obj));
+  }
+}
+
+// ============================================================================
+// Message handler
+// ============================================================================
+function handleMessage(msg) {
+  if (msg.type === 'hello') {
+    updateLogUI(msg.logState === 1 ? 'logging' : msg.logState === 2 ? 'stopped' : 'idle');
+    return;
+  }
+  if (msg.type === 'txResult') {
+    showTxResult(msg.ok, msg.id);
+    return;
+  }
+  if (msg.type === 'logState') {
+    updateLogUI(msg.state);
+    if (msg.frames !== undefined) {
+      document.getElementById('logStatus').textContent =
+        `Stopped — ${msg.frames.toLocaleString()} frames recorded`;
+    }
+    return;
+  }
+  if (msg.type === 'pong') return;
+
+  // CAN frame
+  if (!paused && msg.id !== undefined) {
+    fpsCounter++;
+    addOrUpdateRow(msg);
+  }
+}
+
+// ============================================================================
+// Traffic table
+// ============================================================================
+function dataToHex(arr) {
+  return arr.map(b => b.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+}
+
+function addOrUpdateRow(frame) {
+  const idStr = frame.id;  // already "0x583" string from ESP32
+
+  // Filter check
+  if (!passesFilter(idStr)) return;
+
+  const tbody = document.getElementById('trafficBody');
+  const hlClass = highlights[idStr] || '';
+
+  if (rowMap[idStr]) {
+    // Update existing row
+    const tr = rowMap[idStr];
+    tr.cells[0].textContent = frame.t;
+    tr.cells[4].textContent = dataToHex(frame.data);
+    if (frame.decoded) tr.cells[5].textContent = frame.decoded;
+    tr.cells[6].textContent = frame.count.toLocaleString();
+    tr.className = hlClass;
+  } else {
+    // New row
+    const tr = document.createElement('tr');
+    tr.className = hlClass;
+    tr.innerHTML = `
+      <td class="col-ts">${frame.t}</td>
+      <td class="col-id id-cell">${idStr}</td>
+      <td class="col-name name-cell">${frame.name || ''}</td>
+      <td class="col-len">${frame.len}</td>
+      <td class="col-data data-cell">${dataToHex(frame.data)}</td>
+      <td class="col-dec dec-cell">${frame.decoded || ''}</td>
+      <td class="col-cnt">${(frame.count||1).toLocaleString()}</td>
+    `;
+    // Click to highlight
+    tr.addEventListener('click', () => cycleHighlight(idStr));
+
+    tbody.insertBefore(tr, tbody.firstChild);
+    rowMap[idStr] = tr;
+    rowOrder.push(idStr);
+
+    // Keep max 100 unique IDs visible
+    if (rowOrder.length > 100) {
+      const oldest = rowOrder.shift();
+      if (rowMap[oldest]) {
+        tbody.removeChild(rowMap[oldest]);
+        delete rowMap[oldest];
+      }
+    }
+  }
+
+  document.getElementById('rowCount').textContent = Object.keys(rowMap).length;
+}
+
+function clearTraffic() {
+  document.getElementById('trafficBody').innerHTML = '';
+  Object.keys(rowMap).forEach(k => delete rowMap[k]);
+  rowOrder.length = 0;
+  document.getElementById('rowCount').textContent = '0';
+}
+
+function togglePause() {
+  paused = !paused;
+  document.getElementById('btnPause').textContent = paused ? '▶ Resume' : '⏸ Pause';
+  document.getElementById('btnPause').className = paused ? 'btn warn' : 'btn primary';
+}
+
+// ============================================================================
+// Filter
+// ============================================================================
+function applyFilter() {
+  filterMode = document.getElementById('filterMode').value;
+  const raw = document.getElementById('filterInput').value;
+  filterIds = raw.split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(s => s.length > 0);
+  // Reapply to existing rows
+  Object.entries(rowMap).forEach(([id, tr]) => {
+    tr.style.display = passesFilter(id) ? '' : 'none';
+  });
+}
+
+function passesFilter(idStr) {
+  const id = idStr.toLowerCase();
+  if (filterMode === 'all') return true;
+  if (filterMode === 'only') return filterIds.length === 0 || filterIds.includes(id);
+  if (filterMode === 'hide') return !filterIds.includes(id);
+  return true;
+}
+
+function quickFilter(mode, ids) {
+  document.getElementById('filterMode').value = mode;
+  document.getElementById('filterInput').value = ids;
+  applyFilter();
+  switchTab('traffic');
+}
+
+// ============================================================================
+// Highlight
+// ============================================================================
+const HL_CLASSES = ['hl-red','hl-green','hl-blue','hl-yellow','hl-orange'];
+const HL_COLOURS = ['#ef4444','#22c55e','#3b82f6','#eab308','#f97316'];
+
+function addHighlightRow(id='', colour=HL_CLASSES[0]) {
+  const container = document.getElementById('hlRows');
+  const row = document.createElement('div');
+  row.className = 'highlight-row';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = '0x583';
+  input.value = id;
+  input.style.cssText = 'width:100px;padding:4px 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:12px;';
+
+  const swatches = HL_CLASSES.map((cls, i) => {
+    const sw = document.createElement('div');
+    sw.className = 'hl-swatch' + (cls === colour ? ' sel' : '');
+    sw.style.background = HL_COLOURS[i];
+    sw.onclick = () => {
+      row.querySelectorAll('.hl-swatch').forEach(s => s.classList.remove('sel'));
+      sw.classList.add('sel');
+      applyHighlights();
+    };
+    return sw;
+  });
+
+  const delBtn = document.createElement('button');
+  delBtn.textContent = '✕';
+  delBtn.className = 'btn';
+  delBtn.style.padding = '2px 8px';
+  delBtn.onclick = () => { container.removeChild(row); applyHighlights(); };
+
+  input.oninput = applyHighlights;
+  row.appendChild(input);
+  swatches.forEach(s => row.appendChild(s));
+  row.appendChild(delBtn);
+  container.appendChild(row);
+}
+
+function applyHighlights() {
+  // Clear
+  Object.keys(highlights).forEach(k => delete highlights[k]);
+  document.getElementById('hlRows').querySelectorAll('.highlight-row').forEach(row => {
+    const id = row.querySelector('input').value.trim().toLowerCase();
+    const sel = row.querySelector('.hl-swatch.sel');
+    if (id && sel) {
+      const idx = Array.from(row.querySelectorAll('.hl-swatch')).indexOf(sel);
+      highlights[id] = HL_CLASSES[idx];
+    }
+  });
+  // Re-apply to table rows
+  Object.entries(rowMap).forEach(([id, tr]) => {
+    tr.className = highlights[id.toLowerCase()] || '';
+  });
+}
+
+function cycleHighlight(idStr) {
+  const id = idStr.toLowerCase();
+  const cur = highlights[id];
+  const idx = HL_CLASSES.indexOf(cur);
+  if (idx === HL_CLASSES.length - 1 || idx === -1) {
+    delete highlights[id];
+    if (rowMap[idStr]) rowMap[idStr].className = '';
+  } else {
+    highlights[id] = HL_CLASSES[idx + 1];
+    if (rowMap[idStr]) rowMap[idStr].className = highlights[id];
+  }
+}
+
+// ============================================================================
+// Transmit — Raw
+// ============================================================================
+function initTxBytes() {
+  const grid = document.getElementById('txBytes');
+  for (let i = 0; i < 8; i++) {
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.maxLength = 2;
+    inp.placeholder = '00';
+    inp.id = `txB${i}`;
+    inp.value = '00';
+    inp.oninput = updateRawPreview;
+    grid.appendChild(inp);
+  }
+}
+
+function updateRawPreview() {
+  const id = document.getElementById('txId').value.trim();
+  const len = parseInt(document.getElementById('txLen').value) || 8;
+  let bytes = [];
+  for (let i = 0; i < 8; i++) {
+    const v = document.getElementById(`txB${i}`);
+    bytes.push(parseInt(v ? v.value || '0' : '0', 16) || 0);
+  }
+  bytes = bytes.slice(0, len);
+  document.getElementById('rawPreview').textContent =
+    `TX  ID=${id}  Len=${len}  Data=[${bytes.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join(' ')}]`;
+}
+
+function confirmAndSendRaw() {
+  const idStr = document.getElementById('txId').value.trim();
+  const id = parseInt(idStr, 16);
+  const len = parseInt(document.getElementById('txLen').value) || 8;
+  if (isNaN(id)) { alert('Invalid CAN ID'); return; }
+  if (!confirm(`Send CAN frame ID=${idStr}?`)) return;
+  const data = [];
+  for (let i = 0; i < len; i++) {
+    data.push(parseInt(document.getElementById(`txB${i}`).value || '0', 16) || 0);
+  }
+  sendWS({ cmd: 'transmit', id, data });
+}
+
+function showTxResult(ok, id) {
+  const el = document.getElementById('rawResult');
+  el.style.display = 'block';
+  el.className = 'tx-result ' + (ok ? 'ok' : 'err');
+  el.textContent = ok ? `✓ Frame ${id} sent` : `✗ Transmit failed for ${id}`;
+  setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+// ============================================================================
+// Transmit — SDO Builder
+// ============================================================================
+function buildSDO() {
+  const nodeId = parseInt(document.getElementById('sdoNode').value) || 3;
+  const cmd    = document.getElementById('sdoCmd').value;
+  const idxStr = document.getElementById('sdoIndex').value.trim();
+  const idx    = parseInt(idxStr, 16);
+  const sub    = parseInt(document.getElementById('sdoSub').value) || 0;
+  const val    = parseInt(document.getElementById('sdoVal').value) || 0;
+
+  const reqId  = 0x600 | nodeId;
+  let bytes = [0,0,0,0,0,0,0,0];
+
+  if (cmd === 'read') {
+    bytes = [0x40, idx & 0xFF, (idx >> 8) & 0xFF, sub, 0,0,0,0];
+  } else if (cmd === 'write') {
+    const v = val * 32;  // fixed-point
+    bytes = [0x23, idx & 0xFF, (idx >> 8) & 0xFF, sub,
+             v & 0xFF, (v>>8)&0xFF, (v>>16)&0xFF, (v>>24)&0xFF];
+  } else if (cmd === 'save') {
+    bytes = [0x23, 0x02, 0x50, 0, 0,0,0,0];
+  } else if (cmd === 'reset') {
+    bytes = [0x23, 0x02, 0x50, 2, 0,0,0,0];
+  } else if (cmd === 'segReq') {
+    bytes = [0x60, 0,0,0,0,0,0,0];
+  }
+
+  const hex = bytes.map(b => b.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+  document.getElementById('sdoPreview').textContent =
+    `TX  ID=0x${reqId.toString(16).toUpperCase()}  [${hex}]` +
+    (cmd === 'write' ? `  (value ${val} × 32 = ${val*32})` : '');
+}
+
+function confirmAndSendSDO() {
+  const nodeId = parseInt(document.getElementById('sdoNode').value) || 3;
+  const cmd    = document.getElementById('sdoCmd').value;
+  const idx    = parseInt(document.getElementById('sdoIndex').value.trim(), 16);
+  const sub    = parseInt(document.getElementById('sdoSub').value) || 0;
+  const val    = parseInt(document.getElementById('sdoVal').value) || 0;
+
+  const reqId  = 0x600 | nodeId;
+  let bytes = [0,0,0,0,0,0,0,0];
+
+  if (cmd === 'read') {
+    bytes = [0x40, idx & 0xFF, (idx >> 8) & 0xFF, sub, 0,0,0,0];
+  } else if (cmd === 'write') {
+    const v = val * 32;
+    bytes = [0x23, idx & 0xFF, (idx >> 8) & 0xFF, sub,
+             v & 0xFF, (v>>8)&0xFF, (v>>16)&0xFF, (v>>24)&0xFF];
+  } else if (cmd === 'save') {
+    bytes = [0x23, 0x02, 0x50, 0, 0,0,0,0];
+  } else if (cmd === 'reset') {
+    bytes = [0x23, 0x02, 0x50, 2, 0,0,0,0];
+  } else if (cmd === 'segReq') {
+    bytes = [0x60, 0,0,0,0,0,0,0];
+  }
+
+  if (!confirm(`Send SDO ${cmd.toUpperCase()} to node ${nodeId}?`)) return;
+  sendWS({ cmd: 'transmit', id: reqId, data: bytes });
+
+  const el = document.getElementById('sdoResult');
+  el.style.display = 'block';
+  el.className = 'tx-result ok';
+  el.textContent = `SDO ${cmd} sent to node ${nodeId}`;
+  setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+// ============================================================================
+// Logging
+// ============================================================================
+function logStart() {
+  sendWS({ cmd: 'logStart' });
+}
+
+function logStop() {
+  sendWS({ cmd: 'logStop' });
+}
+
+function logDownload() {
+  window.location.href = '/can/log/download';
+}
+
+function updateLogUI(state) {
+  logState = state;
+  const status = document.getElementById('logStatus');
+  const start  = document.getElementById('btnLogStart');
+  const stop   = document.getElementById('btnLogStop');
+  const dl     = document.getElementById('btnLogDl');
+
+  if (state === 'logging') {
+    status.className = 'log-status logging';
+    status.textContent = '● Recording...';
+    start.disabled = true;
+    stop.disabled  = false;
+    dl.disabled    = true;
+  } else if (state === 'stopped') {
+    status.className = 'log-status stopped';
+    start.disabled = false;
+    stop.disabled  = true;
+    dl.disabled    = false;
+  } else {
+    status.className = 'log-status';
+    status.textContent = 'Idle — press Start to record';
+    start.disabled = false;
+    stop.disabled  = true;
+    dl.disabled    = true;
+  }
+}
+
+function refreshStats() {
+  fetch('/can/stats')
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('statTotal').textContent = data.sessionFrames.toLocaleString();
+      const upSec = Math.round(data.uptime / 1000);
+      document.getElementById('statUptime').textContent = `${upSec}s`;
+      const fps = data.uptime > 0 ? (data.sessionFrames / (data.uptime / 1000)).toFixed(1) : '0';
+      document.getElementById('statFps').textContent = `${fps} fps`;
+
+      // Top IDs bar chart
+      const container = document.getElementById('topIds');
+      container.innerHTML = '<div style="color:var(--muted);font-family:sans-serif;font-size:11px;margin:8px 0;">Top IDs by frame count:</div>';
+      const maxCount = data.ids.length > 0 ? data.ids[0].count : 1;
+      data.ids.forEach(entry => {
+        const pct = Math.round((entry.count / maxCount) * 100);
+        const row = document.createElement('div');
+        row.className = 'id-bar-row';
+        row.innerHTML = `
+          <span class="id-bar-label">${entry.id}</span>
+          <span class="id-bar-name">${entry.name}</span>
+          <div class="id-bar-track"><div class="id-bar-fill" style="width:${pct}%"></div></div>
+          <span class="id-bar-count">${entry.count.toLocaleString()}</span>
+        `;
+        container.appendChild(row);
+      });
+    })
+    .catch(() => {});
+}
+
+// ============================================================================
+// FPS counter
+// ============================================================================
+setInterval(() => {
+  const now = Date.now();
+  const elapsed = (now - lastFpsTime) / 1000;
+  const fps = elapsed > 0 ? Math.round(fpsCounter / elapsed) : 0;
+  document.getElementById('fpsBadge').textContent = `${fps} fps`;
+  fpsCounter = 0;
+  lastFpsTime = now;
+}, 1000);
+
+// Auto-refresh stats every 5s when on log tab
+setInterval(() => {
+  if (document.getElementById('panel-log').classList.contains('active')) {
+    refreshStats();
+  }
+}, 5000);
+
+// ============================================================================
+// Tab switching — connect/disconnect WS based on visibility
+// ============================================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['traffic','filter','transmit','log'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => {
+    p.classList.toggle('active', p.id === `panel-${name}`);
+  });
+
+  // Connect WS when on traffic/transmit/log tab, disconnect on filter-only
+  if (name === 'traffic' || name === 'transmit' || name === 'log') {
+    if (!ws || ws.readyState !== WebSocket.OPEN) connect();
+    if (name === 'log') refreshStats();
+  }
+}
+
+// ============================================================================
+// Init
+// ============================================================================
+initTxBytes();
+updateRawPreview();
+buildSDO();
+addHighlightRow();  // Start with one empty highlight row
+connect();
+</script>
+<script>
+let wakeLock = null;
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {}
+  }
+}
+async function releaseWakeLock() {
+  if (wakeLock) { await wakeLock.release(); wakeLock = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestWakeLock();
+  else releaseWakeLock();
+});
+requestWakeLock();
+</script>
+</body>
+</html>

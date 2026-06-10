@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firmware Update - ZombieVerter Display</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 100px 20px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        .nav-menu {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+            flex-wrap: wrap;
+        }
+        .nav-link {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            color: #667eea;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
+        .nav-link:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            border-color: transparent;
+        }
+        .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+        .info-box {
+            background: rgba(102, 126, 234, 0.1);
+            backdrop-filter: blur(5px);
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #667eea;
+            font-size: 1.3em;
+        }
+        .info-box p {
+            color: #666;
+            line-height: 1.6;
+            margin: 10px 0;
+        }
+        .info-box ul {
+            color: #666;
+            line-height: 1.8;
+        }
+        .warning-box {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%);
+            border: 2px solid rgba(255, 193, 7, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .warning-box h3 {
+            margin-top: 0;
+            color: #ff9800;
+            font-size: 1.3em;
+        }
+        .warning-box p {
+            color: #666;
+            line-height: 1.6;
+            margin: 10px 0;
+        }
+        .ota-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        iframe {
+            width: 100%;
+            border: none;
+            border-radius: 10px;
+            min-height: 400px;
+        }
+        .version-info {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 12px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
+        .version-label {
+            font-size: 0.9em;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .version-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+        }
+        .tab {
+            padding: 15px 30px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+        .tab:hover {
+            color: #667eea;
+        }
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .upload-section {
+            margin: 30px 0;
+            padding: 30px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 15px;
+            border: 2px dashed rgba(102, 126, 234, 0.3);
+        }
+        .file-input-wrapper {
+            margin: 20px 0;
+        }
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+        }
+        button.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        button.primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        button.primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .progress-container {
+            display: none;
+            margin-top: 20px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            font-weight: 600;
+            color: #667eea;
+        }
+        .status-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+        .status-message.success {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.2) 100%);
+            color: #2e7d32;
+            border: 2px solid #4caf50;
+        }
+        .status-message.error {
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.1) 0%, rgba(244, 67, 54, 0.2) 100%);
+            color: #c62828;
+            border: 2px solid #f44336;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-menu">
+        <a href="/" class="nav-link">Upload</a>
+        <a href="/params" class="nav-link">Params</a>
+        <a href="/spotparams" class="nav-link">Spot Params</a>
+        <a href="/settings" class="nav-link">Settings</a>
+        <a href="/setup" class="nav-link">SavvyCAN</a>
+        <a href="/firmware" class="nav-link active">Update</a>
+    </nav>
+
+    <div class="container">
+        <h1>Firmware Update</h1>
+        <p class="subtitle">Update ESP32 Display and VCU firmware</p>
+
+        <div class="version-info">
+            <div class="version-label">Current Display Firmware Version</div>
+            <div class="version-number">1.1.0</div>
+        </div>
+
+        <div class="warning-box">
+            <h3>⚠️ Important Warning</h3>
+            <p><strong>Do not disconnect power or close this page during the update process.</strong></p>
+            <p>Interrupting the firmware update may brick your device and require manual recovery.</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('esp32')">ESP32 Display</button>
+            <button class="tab" onclick="switchTab('vcu')">VCU Firmware</button>
+        </div>
+
+        <!-- ESP32 Display Update Tab -->
+        <div id="esp32-tab" class="tab-content active">
+            <div class="info-box">
+                <h3>📋 ESP32 Display Update Instructions</h3>
+                <ul>
+                    <li>Ensure your device is connected to power</li>
+                    <li>Download the latest firmware (.bin file) from the releases page</li>
+                    <li>Click "Choose File" below and select the firmware file</li>
+                    <li>Click "Update" to begin the upload process</li>
+                    <li>Wait for the update to complete (progress bar will reach 100%)</li>
+                    <li>The device will automatically reboot when finished</li>
+                </ul>
+            </div>
+
+            <div class="ota-container">
+                <iframe id="otaFrame" src="/update"></iframe>
+            </div>
+        </div>
+
+        <!-- VCU Firmware Update Tab -->
+        <div id="vcu-tab" class="tab-content">
+            <div class="info-box">
+                <h3>📋 VCU Firmware Update Instructions</h3>
+                <ul>
+                    <li>Ensure the VCU is powered and connected via CAN bus</li>
+                    <li>Download the latest VCU firmware (.bin file)</li>
+                    <li>Upload the firmware file using the form below</li>
+                    <li>Click "Start Update" to flash the VCU</li>
+                    <li>Wait for the update to complete - this may take several minutes</li>
+                    <li>The VCU will automatically reboot when finished</li>
+                </ul>
+            </div>
+
+            <div class="upload-section">
+                <h3>Upload VCU Firmware</h3>
+                <div class="file-input-wrapper">
+                    <input type="file" id="vcuFirmwareFile" accept=".bin" onchange="handleVcuFileSelect()">
+                </div>
+                <button class="primary" id="uploadBtn" onclick="uploadVcuFirmware()" disabled>Upload Firmware</button>
+                <button class="primary" id="updateBtn" onclick="startVcuUpdate()" disabled style="margin-left: 10px;">Start Update</button>
+
+                <div class="progress-container" id="uploadProgress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="uploadProgressFill"></div>
+                    </div>
+                    <div class="progress-text" id="uploadProgressText">0%</div>
+                </div>
+
+                <div class="progress-container" id="updateProgress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="updateProgressFill"></div>
+                    </div>
+                    <div class="progress-text" id="updateProgressText">0%</div>
+                </div>
+
+                <div class="status-message" id="statusMessage"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let updateCheckInterval = null;
+
+        // Adjust iframe height based on content
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.height) {
+                document.getElementById('otaFrame').style.height = e.data.height + 'px';
+            }
+        });
+
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tab + '-tab').classList.add('active');
+        }
+
+        function handleVcuFileSelect() {
+            selectedFile = document.getElementById('vcuFirmwareFile').files[0];
+            if (selectedFile) {
+                document.getElementById('uploadBtn').disabled = false;
+                showStatus('', 'info');
+            }
+        }
+
+        async function uploadVcuFirmware() {
+            if (!selectedFile) {
+                showStatus('Please select a firmware file first', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('firmware', selectedFile);
+
+            document.getElementById('uploadBtn').disabled = true;
+            document.getElementById('uploadProgress').style.display = 'block';
+
+            try {
+                const xhr = new XMLHttpRequest();
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = (e.loaded / e.total) * 100;
+                        document.getElementById('uploadProgressFill').style.width = percent + '%';
+                        document.getElementById('uploadProgressText').textContent = Math.round(percent) + '%';
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status === 200) {
+                        showStatus('Firmware uploaded successfully! Click "Start Update" to flash the VCU.', 'success');
+                        document.getElementById('updateBtn').disabled = false;
+                        document.getElementById('uploadProgress').style.display = 'none';
+                    } else {
+                        showStatus('Upload failed: ' + xhr.responseText, 'error');
+                        document.getElementById('uploadBtn').disabled = false;
+                        document.getElementById('uploadProgress').style.display = 'none';
+                    }
+                });
+
+                xhr.addEventListener('error', () => {
+                    showStatus('Upload failed: Network error', 'error');
+                    document.getElementById('uploadBtn').disabled = false;
+                    document.getElementById('uploadProgress').style.display = 'none';
+                });
+
+                xhr.open('POST', '/api/vcu-firmware/upload');
+                xhr.send(formData);
+
+            } catch (error) {
+                showStatus('Upload failed: ' + error.message, 'error');
+                document.getElementById('uploadBtn').disabled = false;
+                document.getElementById('uploadProgress').style.display = 'none';
+            }
+        }
+
+        async function startVcuUpdate() {
+            document.getElementById('updateBtn').disabled = true;
+            document.getElementById('updateProgress').style.display = 'block';
+            showStatus('Starting VCU firmware update...', 'info');
+
+            try {
+                const response = await fetch('/api/vcu-firmware/update', {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus('VCU update started - please wait...', 'info');
+                    // Start polling for update progress
+                    updateCheckInterval = setInterval(checkVcuUpdateStatus, 500);
+                } else {
+                    showStatus('Failed to start update: ' + result.error, 'error');
+                    document.getElementById('updateBtn').disabled = false;
+                    document.getElementById('updateProgress').style.display = 'none';
+                }
+            } catch (error) {
+                showStatus('Failed to start update: ' + error.message, 'error');
+                document.getElementById('updateBtn').disabled = false;
+                document.getElementById('updateProgress').style.display = 'none';
+            }
+        }
+
+        async function checkVcuUpdateStatus() {
+            try {
+                const response = await fetch('/api/vcu-firmware/status');
+                const status = await response.json();
+
+                // Update progress bar
+                document.getElementById('updateProgressFill').style.width = status.progress + '%';
+                document.getElementById('updateProgressText').textContent = status.message + ' (' + status.progress + '%)';
+
+                // state: 0=UPD_IDLE, 1=SEND_MAGIC, 2=SEND_SIZE, 3=SEND_PAGE, 4=CHECK_CRC, 5=UPDATE_COMPLETE, 6=UPDATE_ERROR
+                if (status.state === 5) {
+                    // Update complete
+                    clearInterval(updateCheckInterval);
+                    showStatus('VCU firmware update completed successfully!', 'success');
+                    document.getElementById('updateProgress').style.display = 'none';
+                    document.getElementById('updateBtn').disabled = false;
+                    document.getElementById('uploadBtn').disabled = false;
+                    selectedFile = null;
+                    document.getElementById('vcuFirmwareFile').value = '';
+                } else if (status.state === 6) {
+                    // Update error
+                    clearInterval(updateCheckInterval);
+                    showStatus('VCU firmware update failed: ' + status.message, 'error');
+                    document.getElementById('updateProgress').style.display = 'none';
+                    document.getElementById('updateBtn').disabled = false;
+                }
+            } catch (error) {
+                console.error('Error checking update status:', error);
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('statusMessage');
+            if (!message) {
+                statusEl.style.display = 'none';
+                return;
+            }
+
+            statusEl.textContent = message;
+            statusEl.className = 'status-message ' + type;
+            statusEl.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

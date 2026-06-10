@@ -5,41 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parameters - ZombieVerter Display</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 100px 20px 20px;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
         }
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         h1 {
             color: #333;
             text-align: center;
-            margin-bottom: 10px;
-            font-size: 2.2em;
-            font-weight: 600;
-        }
-
-        .subtitle {
-            color: #666;
-            text-align: center;
             margin-bottom: 30px;
-            font-size: 1.1em;
         }
         .controls {
             display: flex;
@@ -52,40 +35,24 @@
             align-items: center;
             gap: 5px;
         }
-        select, input {
-            padding: 10px 15px;
-            border: 2px solid #ddd;
-            border-radius: 10px;
+        select, input, button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
             font-size: 14px;
-            background: white;
-            transition: border-color 0.3s ease;
         }
-
-        select:focus, input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
         button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-color: #007bff;
             color: white;
             border: none;
             cursor: pointer;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        button:hover {
+            background-color: #0056b3;
         }
         button:disabled {
-            background: #ccc;
+            background-color: #ccc;
             cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
         }
         .loading {
             text-align: center;
@@ -111,54 +78,20 @@
         .params-list {
             margin-top: 20px;
         }
-        .nav-menu {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            gap: 10px;
-            z-index: 1000;
-        }
-
-        .nav-link {
-            background: rgba(255, 255, 255, 0.95);
-            color: #667eea;
-            text-decoration: none;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .nav-link:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .nav-link.active {
-            background: #667eea;
-            color: white;
-        }
-
         .param-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 15px 20px;
-            border: 2px solid rgba(102, 126, 234, 0.1);
-            margin-bottom: 10px;
-            border-radius: 15px;
-            background: rgba(248, 250, 252, 0.8);
-            transition: all 0.3s ease;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            background-color: #fafafa;
+            transition: all 0.2s ease;
         }
         .param-item:hover {
-            background: rgba(102, 126, 234, 0.05);
-            border-color: rgba(102, 126, 234, 0.3);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+            background-color: #f0f0f0;
+            border-color: #bbb;
         }
         .param-info {
             flex: 1;
@@ -197,65 +130,6 @@
             font-weight: bold;
             color: #007bff;
             min-width: 80px;
-        }
-        .param-select {
-            padding: 8px 12px;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            background: white;
-            color: #333;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 150px;
-        }
-        .param-select:hover {
-            background: rgba(102, 126, 234, 0.05);
-            border-color: #764ba2;
-        }
-        .param-select:focus {
-            outline: none;
-            border-color: #764ba2;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        .param-select:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        .param-input {
-            padding: 8px 12px;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            background: white;
-            color: #333;
-            transition: all 0.3s ease;
-            width: 120px;
-            text-align: center;
-        }
-        .param-input:hover {
-            background: rgba(102, 126, 234, 0.05);
-            border-color: #764ba2;
-        }
-        .param-input:focus {
-            outline: none;
-            border-color: #764ba2;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        .param-input:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        .param-input-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .param-unit {
-            color: #666;
-            font-size: 14px;
         }
         .param-range {
             font-size: 12px;
@@ -347,14 +221,12 @@
         <a href="/params" class="nav-link active">Params</a>
         <a href="/spotparams" class="nav-link">Spot Params</a>
         <a href="/settings" class="nav-link">Settings</a>
-        <a href="/setup" class="nav-link">SavvyCAN</a>
-        <a href="/firmware" class="nav-link">Update</a>
+        <a href="/update" class="nav-link">Update</a>
     </nav>
 
     <div class="container">
         <h1>Parameters Manager</h1>
-        <p class="subtitle">Configure and manage all VCU parameters</p>
-
+        
         <div id="message"></div>
         
         <div class="stats" id="stats" style="display: none;">
@@ -403,14 +275,10 @@
 
     <script>
         let allParameters = {};
-        let liveUpdateInterval = null;
-        let isUpdatingValues = false;
 
         // Load parameters when page loads
         document.addEventListener('DOMContentLoaded', function() {
             loadParameters();
-            // Start live updates every 2 seconds
-            startLiveUpdates();
         });
 
         // Add event listeners for filtering
@@ -429,84 +297,21 @@
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-
+                
                 allParameters = await response.json();
                 populateCategoryFilter();
                 displayParameters();
                 updateStats();
-
+                
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('paramsContainer').style.display = 'block';
                 document.getElementById('stats').style.display = 'flex';
-
+                
             } catch (error) {
                 console.error('Error loading parameters:', error);
                 showMessage('Error loading parameters: ' + error.message, 'error');
                 document.getElementById('loading').style.display = 'none';
             }
-        }
-
-        function startLiveUpdates() {
-            // Update values every 2 seconds
-            liveUpdateInterval = setInterval(updateLiveValues, 2000);
-        }
-
-        function stopLiveUpdates() {
-            if (liveUpdateInterval) {
-                clearInterval(liveUpdateInterval);
-                liveUpdateInterval = null;
-            }
-        }
-
-        async function updateLiveValues() {
-            if (isUpdatingValues) return; // Skip if already updating
-
-            isUpdatingValues = true;
-            try {
-                const response = await fetch('/api/params/values');
-                if (!response.ok) {
-                    console.error('Failed to fetch live values');
-                    return;
-                }
-
-                const values = await response.json();
-
-                // Update parameter values in memory
-                Object.keys(values).forEach(paramName => {
-                    if (allParameters[paramName]) {
-                        allParameters[paramName].value = values[paramName];
-                    }
-                });
-
-                // Update displayed values without full re-render
-                updateDisplayedValues(values);
-
-            } catch (error) {
-                console.error('Error updating live values:', error);
-            } finally {
-                isUpdatingValues = false;
-            }
-        }
-
-        function updateDisplayedValues(values) {
-            Object.keys(values).forEach(paramName => {
-                const param = allParameters[paramName];
-                if (!param || !param.id) return;
-
-                // Update number inputs
-                const input = document.getElementById(`param-input-${param.id}`);
-                if (input && document.activeElement !== input) {
-                    // Only update if user is not currently editing
-                    input.value = values[paramName];
-                }
-
-                // Update dropdowns
-                const select = document.getElementById(`param-select-${param.id}`);
-                if (select && document.activeElement !== select) {
-                    const roundedValue = Math.round(values[paramName]);
-                    select.value = roundedValue;
-                }
-            });
         }
 
         function populateCategoryFilter() {
@@ -580,75 +385,6 @@
             const rangeText = param.minimum !== undefined ? `Range: ${param.minimum} - ${param.maximum}` : '';
             const defaultText = param.default !== undefined ? `Default: ${param.default}` : '';
 
-            // Check if parameter has values (enum options)
-            let valueDisplay;
-            let parsedValues = null;
-
-            // Parse values - check both 'values' field and 'unit' field for enum data
-            let enumSource = param.values || param.unit;
-
-            if (enumSource) {
-                if (typeof enumSource === 'object') {
-                    parsedValues = enumSource;
-                } else if (typeof enumSource === 'string') {
-                    // Check if string contains enum format (e.g., "0=None, 1=Leaf_Gen1")
-                    if (enumSource.includes('=') && enumSource.includes(',')) {
-                        parsedValues = {};
-                        enumSource.split(',').forEach(pair => {
-                            const trimmed = pair.trim();
-                            const equalIndex = trimmed.indexOf('=');
-                            if (equalIndex > 0) {
-                                const val = trimmed.substring(0, equalIndex).trim();
-                                const label = trimmed.substring(equalIndex + 1).trim();
-                                if (val && label) {
-                                    parsedValues[label] = parseInt(val);
-                                }
-                            }
-                        });
-                    }
-                }
-            }
-
-            if (parsedValues && Object.keys(parsedValues).length > 0) {
-                // Create dropdown for enum parameters
-                const currentValue = Math.round(param.value || 0);
-                const selectId = `param-select-${param.id}`;
-
-                let options = '';
-                Object.entries(parsedValues).forEach(([key, val]) => {
-                    const selected = val === currentValue ? 'selected' : '';
-                    options += `<option value="${val}" ${selected}>${key}</option>`;
-                });
-
-                valueDisplay = `<select class="param-select" id="${selectId}" data-param-id="${param.id}" data-param-name="${name}" onchange="updateParameterValue(this)">${options}</select>`;
-            } else if (param.minimum !== undefined && param.maximum !== undefined) {
-                // Create number input for numeric parameters with ranges
-                const inputId = `param-input-${param.id}`;
-                const step = (param.maximum - param.minimum > 100) ? 1 : 0.1;
-                const unit = param.unit && !param.unit.includes('=') ? param.unit : '';
-
-                valueDisplay = `
-                    <div class="param-input-group">
-                        <input type="number"
-                               class="param-input"
-                               id="${inputId}"
-                               data-param-id="${param.id}"
-                               data-param-name="${name}"
-                               value="${param.value}"
-                               min="${param.minimum}"
-                               max="${param.maximum}"
-                               step="${step}"
-                               onchange="updateParameterValue(this)"
-                               onkeypress="if(event.key==='Enter') this.blur()">
-                        ${unit ? `<span class="param-unit">${unit}</span>` : ''}
-                    </div>
-                `;
-            } else {
-                // Show value as text for parameters without ranges
-                const displayUnit = param.unit && !param.unit.includes('=') ? param.unit : '';
-                valueDisplay = `<div class="param-value">${param.value} ${displayUnit}</div>`;
-            }
-
             item.innerHTML = `
                 <div class="param-info">
                     <div class="param-main">
@@ -656,7 +392,7 @@
                         <div class="param-category">${param.category || 'Uncategorized'}</div>
                     </div>
                     <div class="param-details">
-                        ${valueDisplay}
+                        <div class="param-value">${param.value} ${param.unit || ''}</div>
                         ${rangeText ? `<div class="param-range">${rangeText}</div>` : ''}
                         ${defaultText ? `<div class="param-range">${defaultText}</div>` : ''}
                     </div>
@@ -668,62 +404,6 @@
             `;
 
             return item;
-        }
-
-        async function updateParameterValue(element) {
-            const paramId = parseInt(element.dataset.paramId);
-            const paramName = element.dataset.paramName;
-            const newValue = parseFloat(element.value);
-
-            // Validate number input if it has min/max
-            if (element.type === 'number') {
-                const min = parseFloat(element.min);
-                const max = parseFloat(element.max);
-                if (newValue < min || newValue > max) {
-                    alert(`Value must be between ${min} and ${max}`);
-                    element.value = allParameters[paramName]?.value || min;
-                    return;
-                }
-            }
-
-            // Disable element while updating
-            element.disabled = true;
-
-            try {
-                const response = await fetch('/api/params/set', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        id: paramId,
-                        value: newValue
-                    })
-                });
-
-                const result = await response.json();
-
-                if (response.ok && result.success) {
-                    // Update local parameter value
-                    if (allParameters[paramName]) {
-                        allParameters[paramName].value = newValue;
-                    }
-                    console.log(`Parameter ${paramName} (ID: ${paramId}) updated to ${newValue}`);
-                } else {
-                    alert(`Failed to update parameter: ${result.error || 'Unknown error'}`);
-                    // Reload parameters to reset dropdown
-                    await loadParameters();
-                    displayParameters();
-                }
-            } catch (error) {
-                console.error('Error updating parameter:', error);
-                alert('Failed to update parameter: ' + error.message);
-                // Reload parameters to reset dropdown
-                await loadParameters();
-                displayParameters();
-            } finally {
-                element.disabled = false;
-            }
         }
 
         async function toggleHidden(paramName, button) {

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "DisplayManager.h"
 #include "DataRetriever.h"
+#include "SerialCommandHandler.h"
 #include <TFT_eSPI.h>
 #include <SPI.h>
 #include "ui.h"
@@ -22,8 +23,8 @@ extern void flushThunk( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *
 // External reference to global paramsDoc from main ino file
 extern DynamicJsonDocument paramsDoc;
 
-DisplayManager::DisplayManager(CanSDO &canSDO) : canSDO(canSDO) {
-  
+DisplayManager::DisplayManager(CanSDO &canSDO) : canSDO(canSDO), serialCommandHandler(nullptr) {
+
 }
 
 void DisplayManager::UpdateData(int id, int value) {
@@ -31,37 +32,102 @@ void DisplayManager::UpdateData(int id, int value) {
     //dont update if in edit mode
     return;
   }
-  
+
   switch(id) {
     case KWH_VALUE_ID:
-      kwh = value;
+      // Only update if non-zero or if current value is 0 (initial state)
+      if (value != 0 || kwh == 0) {
+        kwh = value;
+      }
       break;
     case DIR_VALUE_ID:
       dir = (int16_t)value;
       break;
     case BMS_T_MAX_VALUE_ID:
-      batteryMaxTemp = value;
+      // Only update if non-zero or if current value is 0
+      if (value != 0 || batteryMaxTemp == 0) {
+        batteryMaxTemp = value;
+      }
       break;
     case SOC_VALUE_ID:
-      stateOfCharge = value;
+      // Only update if non-zero or if current value is 0
+      if (value != 0 || stateOfCharge == 0) {
+        stateOfCharge = value;
+      }
       break;
     case MOTOR_TEMP_VALUE_ID:
+      // Temperature can legitimately be 0, so always update
       motorTemp = value;
       break;
     case INVERTER_TEMP_VALUE_ID:
+      // Temperature can legitimately be 0, so always update
       inverterTemp = value;
       break;
     case GEAR_PARAM_ID:
-      gearSetting = value;
+      // Gear can be 0, but protect against flickering
+      if (value != 0 || gearSetting == 0) {
+        gearSetting = value;
+      }
       break;
     case MOTORS_ACTIVE_PARAM_ID:
-      motorSetting = value;
+      // Motor setting can be 0, but protect against flickering
+      if (value != 0 || motorSetting == 0) {
+        motorSetting = value;
+      }
       break;
     case REGEN_MAX_PARAM_ID:
+      // Regen can be 0, so always update
       regenSetting = (int16_t)value;
       break;
     case IDC_VALUE_ID:
+      // Current can be 0 (not charging/discharging), so always update
       amps = (int16_t)value;
+      break;
+    case HEATREQ_PARAM_ID:
+      // Debug tracking for HeatReq
+      if (debugLabel != nullptr) {
+        static int updateCount = 0;
+        static int lastValue = -1;
+        static unsigned long lastDisplayUpdate = 0;
+        updateCount++;
+
+        unsigned long now = millis();
+
+        // Check if this is from serial timeout or serial command
+        const char* source = "CAN";
+        if (serialCommandHandler != nullptr) {
+          unsigned long lastTimeout = serialCommandHandler->GetLastTimeoutTime();
+          unsigned long lastCmdTime = serialCommandHandler->GetLastCommandIdTime();
+          int lastCmdId = serialCommandHandler->GetLastCommandId();
+
+          if (lastTimeout > 0 && (now - lastTimeout) < 500) {
+            source = "TIMEOUT";
+          } else if (lastCmdId == 155 && (now - lastCmdTime) < 500) {
+            source = "SERIAL";
+          }
+        }
+
+        // Only update display every 200ms to reduce overhead
+        if (now - lastDisplayUpdate >= 200) {
+          char debugStr[80];
+          snprintf(debugStr, sizeof(debugStr), "HR:%d #%d %s T:%lu",
+                   value, updateCount, source, now / 1000);
+          lv_label_set_text(debugLabel, debugStr);
+          lastDisplayUpdate = now;
+        }
+
+        // Log only actual value changes
+        if (value != lastValue) {
+          Serial.print("HeatReq: ");
+          Serial.print(lastValue);
+          Serial.print("->");
+          Serial.print(value);
+          Serial.print(" (");
+          Serial.print(source);
+          Serial.println(")");
+          lastValue = value;
+        }
+      }
       break;
   }
 }
@@ -77,6 +143,51 @@ void DisplayManager::UpdateSpotParameterData(int id, int value) {
 }
 
 void DisplayManager::UpdateParameterData(int id, int value) {
+  // Debug tracking for HeatReq (ID 155)
+  if (id == HEATREQ_PARAM_ID && debugLabel != nullptr) {
+    static int updateCount = 0;
+    static int lastValue = -1;
+    static unsigned long lastDisplayUpdate = 0;
+    updateCount++;
+
+    unsigned long now = millis();
+
+    // Check if this is from serial timeout or serial command
+    const char* source = "CAN";
+    if (serialCommandHandler != nullptr) {
+      unsigned long lastTimeout = serialCommandHandler->GetLastTimeoutTime();
+      unsigned long lastCmdTime = serialCommandHandler->GetLastCommandIdTime();
+      int lastCmdId = serialCommandHandler->GetLastCommandId();
+
+      if (lastTimeout > 0 && (now - lastTimeout) < 500) {
+        source = "TIMEOUT";
+      } else if (lastCmdId == 155 && (now - lastCmdTime) < 500) {
+        source = "SERIAL";
+      }
+    }
+
+    // Only update display every 200ms to reduce overhead
+    if (now - lastDisplayUpdate >= 200) {
+      char debugStr[80];
+      snprintf(debugStr, sizeof(debugStr), "HR:%d #%d %s T:%lu",
+               value, updateCount, source, now / 1000);
+      lv_label_set_text(debugLabel, debugStr);
+      lastDisplayUpdate = now;
+    }
+
+    // Log only actual value changes
+    if (value != lastValue) {
+      Serial.print("HeatReq: ");
+      Serial.print(lastValue);
+      Serial.print("->");
+      Serial.print(value);
+      Serial.print(" (");
+      Serial.print(source);
+      Serial.println(")");
+      lastValue = value;
+    }
+  }
+
   // Find the parameter with matching ID and update its value (only if not editing)
   if (!isEditingParam) {
     for (int i = 0; i < parameterCount; i++) {
@@ -100,7 +211,9 @@ int DisplayManager::GetScreenIndex() {
 }
 
 void DisplayManager::ProcessClockwiseInput() {
-    if (screenIndex == PARAMETERSCREEN && !isEditingParam) {
+    if (screenIndex == SETTINGSMAINSCREEN && inSettingsMenu) {
+      settingsMenuOption = (settingsMenuOption + 1) % 3;
+    } else if (screenIndex == PARAMETERSCREEN && !isEditingParam) {
       NextParameter();
     } else if (screenIndex == PARAMETERSCREEN && isEditingParam && parameterCount > 0) {
       // Increment parameter value while editing
@@ -123,7 +236,9 @@ void DisplayManager::ProcessClockwiseInput() {
 }
 
 void DisplayManager::ProcessAnticlockwiseInput() {
-      if (screenIndex == PARAMETERSCREEN && !isEditingParam) {
+      if (screenIndex == SETTINGSMAINSCREEN && inSettingsMenu) {
+        settingsMenuOption = (settingsMenuOption - 1 + 3) % 3;
+      } else if (screenIndex == PARAMETERSCREEN && !isEditingParam) {
         PreviousParameter();
       } else if (screenIndex == PARAMETERSCREEN && isEditingParam && parameterCount > 0) {
         // Decrement parameter value while editing
@@ -147,7 +262,63 @@ void DisplayManager::ProcessAnticlockwiseInput() {
 }
 
 void DisplayManager::ProcessClickInput() {
-    if (screenIndex == SETTINGSMAINSCREEN) {
+    if (screenIndex == SETTINGSMAINSCREEN && !inSettingsMenu) {
+      // Enter settings menu
+      inSettingsMenu = true;
+    } else if (screenIndex == SETTINGSMAINSCREEN && inSettingsMenu) {
+      // Execute selected action
+      if (settingsMenuOption == 0) {
+        // Rotate screen - toggle between 0° and 180°
+        if (currentRotation == 1) {
+          currentRotation = 3;  // Switch to 180°
+        } else {
+          currentRotation = 1;  // Switch to 0°
+        }
+        tft.setRotation(currentRotation);
+
+        // Save to settings.json
+        DynamicJsonDocument settingsDoc(1024);
+        int degreesRotation = (currentRotation == 1) ? 0 : 180;
+        settingsDoc["rotation"] = degreesRotation;
+
+        fs::File file = SPIFFS.open("/settings.json", "w");
+        if (file) {
+          serializeJson(settingsDoc, file);
+          file.close();
+        }
+      } else if (settingsMenuOption == 1) {
+        // Fetch parameters from VCU
+        canSDO.StartJsonFetch();
+      } else if (settingsMenuOption == 2) {
+        // Toggle serial relay
+        if (serialCommandHandler != nullptr) {
+          bool currentState = serialCommandHandler->IsEnabled();
+          serialCommandHandler->SetEnabled(!currentState);
+
+          // Save to settings.json
+          DynamicJsonDocument settingsDoc(1024);
+
+          // Load existing settings first
+          if (SPIFFS.exists("/settings.json")) {
+            fs::File readFile = SPIFFS.open("/settings.json", "r");
+            if (readFile) {
+              deserializeJson(settingsDoc, readFile);
+              readFile.close();
+            }
+          }
+
+          // Update serial relay setting
+          settingsDoc["serialRelayEnabled"] = !currentState;
+
+          // Save back
+          fs::File file = SPIFFS.open("/settings.json", "w");
+          if (file) {
+            serializeJson(settingsDoc, file);
+            file.close();
+          }
+        }
+      }
+    } else if (screenIndex == PARAMSMAINSCREEN) {
       // Enter parameter navigation mode
       EnterSettingsMode();
     } else if (screenIndex == SPOTPARAMSMAINSCREEN) {
@@ -167,12 +338,15 @@ void DisplayManager::ProcessClickInput() {
     } else if (screenIndex == REGENSETTINGSCREEN) {
       lv_label_set_text(ui_regenEditing, LV_SYMBOL_EDIT);
       isEditing = true;
-    } else if (screenIndex == SETTINGSMAINSCREEN) {
+    } else if (screenIndex == PARAMSMAINSCREEN) {
     }
 }
 
 void DisplayManager::ProcessDoubleClickInput() {
-    if (inSettingsMode && isEditingParam) {
+    if (inSettingsMenu) {
+      // Exit settings menu
+      inSettingsMenu = false;
+    } else if (inSettingsMode && isEditingParam) {
       // Save parameter changes
       Parameter &param = parameters[currentParameterIndex];
       if (isValidParameterValue(tempParamValue, param.minimum, param.maximum)) {
@@ -243,11 +417,15 @@ void DisplayManager::Setup() {
 
       if (!error && settingsDoc.containsKey("rotation")) {
         int savedRotation = settingsDoc["rotation"].as<int>();
-        // Only accept 0 or 180 degree rotations (which map to rotation values 1 and 3)
+        // Accept 0, 90, 180, 270 degree rotations
         if (savedRotation == 0) {
           rotation = 1;
+        } else if (savedRotation == 90) {
+          rotation = 2;
         } else if (savedRotation == 180) {
           rotation = 3;
+        } else if (savedRotation == 270) {
+          rotation = 0;
         }
         Serial.print("Loaded rotation setting: ");
         Serial.print(savedRotation);
@@ -258,6 +436,7 @@ void DisplayManager::Setup() {
     }
   }
 
+  currentRotation = rotation;  // Store in member variable
   tft.setRotation(rotation);
   tft.fillScreen(TFT_BLACK);
 
@@ -282,9 +461,57 @@ void DisplayManager::Setup() {
   tft.fillScreen(TFT_BLACK);
 
   ui_init();
-  
+
   // Load parameters from JSON for settings screens
   LoadParameters();
+
+  // Initialize LEDs with startup test
+  Serial.println("Testing LEDs...");
+  const uint8_t ledCount = 7;
+  rgb_color colors[ledCount];
+
+  // Test 1: Red
+  Serial.println("LED Test: Red");
+  for (uint8_t i = 0; i < ledCount; i++) {
+    colors[i] = rgb_color{255, 0, 0};
+  }
+  ledStrip.write(colors, ledCount, 31);
+  delay(500);
+
+  // Test 2: Green
+  Serial.println("LED Test: Green");
+  for (uint8_t i = 0; i < ledCount; i++) {
+    colors[i] = rgb_color{0, 255, 0};
+  }
+  ledStrip.write(colors, ledCount, 31);
+  delay(500);
+
+  // Test 3: Blue
+  Serial.println("LED Test: Blue");
+  for (uint8_t i = 0; i < ledCount; i++) {
+    colors[i] = rgb_color{0, 0, 255};
+  }
+  ledStrip.write(colors, ledCount, 31);
+  delay(500);
+
+  // Turn off
+  Serial.println("LED Test: Off");
+  for (uint8_t i = 0; i < ledCount; i++) {
+    colors[i] = rgb_color{0, 0, 0};
+  }
+  ledStrip.write(colors, ledCount, 0);
+  Serial.println("LED Test complete");
+
+  // Create debug label for HeatReq (will be shown on all screens)
+  debugLabel = lv_label_create(lv_scr_act());
+  lv_label_set_text(debugLabel, "HeatReq: --");
+  lv_obj_set_style_text_font(debugLabel, &lv_font_montserrat_12, 0);
+  lv_obj_set_style_text_color(debugLabel, lv_color_make(255, 255, 0), 0);
+  lv_obj_set_style_bg_color(debugLabel, lv_color_make(0, 0, 0), 0);
+  lv_obj_set_style_bg_opa(debugLabel, LV_OPA_70, 0);
+  lv_obj_set_style_pad_all(debugLabel, 2, 0);
+  lv_obj_align(debugLabel, LV_ALIGN_TOP_LEFT, 2, 2);
+  lv_obj_move_foreground(debugLabel);
 
 }
 
@@ -369,6 +596,26 @@ void DisplayManager::Screen5Refresh() {
 
 void DisplayManager::Loop() {
   lv_timer_handler();
+
+  // LED fuel gauge disabled for testing
+  // UpdateLEDFuelGauge();
+
+  // Ensure debug label is on the active screen and on top
+  if (debugLabel != nullptr) {
+    lv_obj_t* activeScreen = lv_scr_act();
+    if (lv_obj_get_parent(debugLabel) != activeScreen) {
+      lv_obj_set_parent(debugLabel, activeScreen);
+      lv_obj_align(debugLabel, LV_ALIGN_TOP_LEFT, 2, 2);
+      lv_obj_move_foreground(debugLabel);
+    }
+  }
+
+  // Auto-hide error message after timeout
+  if (errorMessageShown && (millis() - errorDisplayStart) > errorDisplayDuration) {
+    errorMessageShown = false;
+    // Return to previous screen - just refresh current screen
+  }
+
   if (screenIndex == BATTERYINFOSCREEN) {
     Screen1Refresh();
   } else if (screenIndex == TEMPERATUREINFOSCREEN) {
@@ -379,11 +626,13 @@ void DisplayManager::Loop() {
     Screen4Refresh();
   } else if (screenIndex == REGENSETTINGSCREEN) {
     Screen5Refresh();
-  } else if (screenIndex == SETTINGSMAINSCREEN) {
-    SettingsMainRefresh();
+  } else if (screenIndex == PARAMSMAINSCREEN) {
+    ParamsMainRefresh();
   } else if (screenIndex == SPOTPARAMSMAINSCREEN) {
     SpotParameterMainRefresh();
-  }else if (screenIndex == PARAMETERSCREEN) {
+  } else if (screenIndex == SETTINGSMAINSCREEN) {
+    SettingsMainRefresh();
+  } else if (screenIndex == PARAMETERSCREEN) {
     ParameterScreenRefresh();
   } else if (screenIndex == SPOTPARAMSCREEN) {
     SpotParameterScreenRefresh();
@@ -475,7 +724,7 @@ void DisplayManager::EnterSettingsMode() {
 
 void DisplayManager::ExitSettingsMode() {
   inSettingsMode = false;
-  screenIndex = SETTINGSMAINSCREEN;
+  screenIndex = PARAMSMAINSCREEN;
 }
 
 void DisplayManager::NextParameter() {
@@ -523,25 +772,29 @@ int DisplayManager::GetCurrentSpotParameterId() {
 //  }
 //}
 
-void DisplayManager::SettingsMainRefresh() {
-  static lv_obj_t * settingsScreen = NULL;
+void DisplayManager::SetSerialCommandHandler(SerialCommandHandler* handler) {
+  serialCommandHandler = handler;
+}
+
+void DisplayManager::ParamsMainRefresh() {
+  static lv_obj_t * paramsScreen = NULL;
   static lv_obj_t * titleLabel = NULL;
   static lv_obj_t * instructionLabel = NULL;
-  
+
   // Create screen if it doesn't exist
-  if (settingsScreen == NULL) {
-    settingsScreen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(settingsScreen, lv_color_black(), 0);
-    
+  if (paramsScreen == NULL) {
+    paramsScreen = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(paramsScreen, lv_color_black(), 0);
+
     // Title
-    titleLabel = lv_label_create(settingsScreen);
-    lv_label_set_text(titleLabel, "SETTINGS");
+    titleLabel = lv_label_create(paramsScreen);
+    lv_label_set_text(titleLabel, "PARAMETERS");
     lv_obj_set_style_text_font(titleLabel, &lv_font_montserrat_44, 0);
     lv_obj_set_style_text_color(titleLabel, lv_color_white(), 0);
     lv_obj_align(titleLabel, LV_ALIGN_TOP_MID, 0, 20);
-    
+
     // Instructions
-    instructionLabel = lv_label_create(settingsScreen);
+    instructionLabel = lv_label_create(paramsScreen);
     lv_label_set_text(instructionLabel, "Rotate: Navigate\nClick: Enter\nDouble-Click: Exit");
     lv_obj_set_style_text_font(instructionLabel, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(instructionLabel, lv_color_white(), 0);
@@ -549,8 +802,8 @@ void DisplayManager::SettingsMainRefresh() {
     lv_obj_align(instructionLabel, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_y( instructionLabel, 40 );
   }
-  
-  lv_disp_load_scr(settingsScreen);
+
+  lv_disp_load_scr(paramsScreen);
 }
 
 
@@ -581,6 +834,107 @@ void DisplayManager::SpotParameterMainRefresh() {
     lv_obj_set_y( instructionLabel, 40 );
   }
   
+  lv_disp_load_scr(settingsScreen);
+}
+
+void DisplayManager::SettingsMainRefresh() {
+  static lv_obj_t * settingsScreen = NULL;
+  static lv_obj_t * titleLabel = NULL;
+  static lv_obj_t * rotateLabel = NULL;
+  static lv_obj_t * fetchLabel = NULL;
+  static lv_obj_t * serialRelayLabel = NULL;
+  static lv_obj_t * instructionLabel = NULL;
+
+  // Create screen if it doesn't exist
+  if (settingsScreen == NULL) {
+    settingsScreen = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(settingsScreen, lv_color_black(), 0);
+
+    // Title
+    titleLabel = lv_label_create(settingsScreen);
+    lv_obj_set_style_text_font(titleLabel, &lv_font_montserrat_44, 0);
+    lv_obj_set_style_text_color(titleLabel, lv_color_white(), 0);
+    lv_obj_align(titleLabel, LV_ALIGN_TOP_MID, 0, 20);
+
+    // Rotate Screen option (hidden on entry screen)
+    rotateLabel = lv_label_create(settingsScreen);
+    lv_obj_set_style_text_font(rotateLabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(rotateLabel, lv_color_white(), 0);
+    lv_obj_align(rotateLabel, LV_ALIGN_LEFT_MID, 20, -30);
+
+    // Fetch Parameters option (hidden on entry screen)
+    fetchLabel = lv_label_create(settingsScreen);
+    lv_obj_set_style_text_font(fetchLabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(fetchLabel, lv_color_white(), 0);
+    lv_obj_align(fetchLabel, LV_ALIGN_LEFT_MID, 20, 0);
+
+    // Serial Relay option (hidden on entry screen)
+    serialRelayLabel = lv_label_create(settingsScreen);
+    lv_obj_set_style_text_font(serialRelayLabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(serialRelayLabel, lv_color_white(), 0);
+    lv_obj_align(serialRelayLabel, LV_ALIGN_LEFT_MID, 20, 30);
+
+    // Instructions
+    instructionLabel = lv_label_create(settingsScreen);
+    lv_obj_set_style_text_font(instructionLabel, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(instructionLabel, lv_color_white(), 0);
+    lv_obj_set_style_text_align(instructionLabel, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(instructionLabel, LV_ALIGN_CENTER, 0, 40);
+  }
+
+  // Show different content based on whether we're in settings menu or entry screen
+  if (inSettingsMenu) {
+    // In settings menu - show options
+    lv_label_set_text(titleLabel, "SETTINGS");
+    lv_obj_set_style_text_font(titleLabel, &lv_font_montserrat_28, 0);
+    lv_obj_align(titleLabel, LV_ALIGN_TOP_MID, 0, 10);
+
+    // Show options
+    lv_obj_clear_flag(rotateLabel, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(fetchLabel, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(serialRelayLabel, LV_OBJ_FLAG_HIDDEN);
+
+    // Get current serial relay state
+    const char* relayState = (serialCommandHandler != nullptr && serialCommandHandler->IsEnabled()) ? "ON" : "OFF";
+    char relayText[40];
+    snprintf(relayText, sizeof(relayText), "  Serial Relay [%s]", relayState);
+
+    // Update selection indicator
+    if (settingsMenuOption == 0) {
+      lv_label_set_text(rotateLabel, "> Rotate Screen");
+      lv_label_set_text(fetchLabel, "  Fetch Parameters");
+      lv_label_set_text(serialRelayLabel, relayText);
+    } else if (settingsMenuOption == 1) {
+      lv_label_set_text(rotateLabel, "  Rotate Screen");
+      lv_label_set_text(fetchLabel, "> Fetch Parameters");
+      lv_label_set_text(serialRelayLabel, relayText);
+    } else {
+      lv_label_set_text(rotateLabel, "  Rotate Screen");
+      lv_label_set_text(fetchLabel, "  Fetch Parameters");
+      snprintf(relayText, sizeof(relayText), "> Serial Relay [%s]", relayState);
+      lv_label_set_text(serialRelayLabel, relayText);
+    }
+
+    // Hide instructions to prevent overlap with menu items
+    lv_obj_add_flag(instructionLabel, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    // Entry screen - show title and instructions
+    lv_label_set_text(titleLabel, "SETTINGS");
+    lv_obj_set_style_text_font(titleLabel, &lv_font_montserrat_44, 0);
+    lv_obj_align(titleLabel, LV_ALIGN_TOP_MID, 0, 20);
+
+    // Hide options
+    lv_obj_add_flag(rotateLabel, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(fetchLabel, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(serialRelayLabel, LV_OBJ_FLAG_HIDDEN);
+
+    // Show instructions on entry screen
+    lv_obj_clear_flag(instructionLabel, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(instructionLabel, "Click: Enter\nDouble-Click: Exit");
+    lv_obj_set_style_text_font(instructionLabel, &lv_font_montserrat_20, 0);
+    lv_obj_align(instructionLabel, LV_ALIGN_CENTER, 0, 40);
+  }
+
   lv_disp_load_scr(settingsScreen);
 }
 
@@ -860,4 +1214,160 @@ String DisplayManager::parseUnitValue(const char* unit, int value) {
 // Utility function to validate parameter values against min/max bounds
 bool DisplayManager::isValidParameterValue(float value, float min, float max) {
   return value >= min && value <= max;
+}
+
+void DisplayManager::ShowLoadingScreen(const char* message, int progress) {
+  // Create loading screen if it doesn't exist
+  if (loadingScreen == nullptr) {
+    loadingScreen = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(loadingScreen, lv_color_hex(0x000000), 0);
+
+    // Title label
+    lv_obj_t* titleLabel = lv_label_create(loadingScreen);
+    lv_label_set_text(titleLabel, "Fetching Parameters");
+    lv_obj_set_style_text_font(titleLabel, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(titleLabel, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(titleLabel, LV_ALIGN_TOP_MID, 0, 30);
+
+    // Message label
+    loadingLabel = lv_label_create(loadingScreen);
+    lv_obj_set_style_text_color(loadingLabel, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(loadingLabel, LV_ALIGN_CENTER, 0, -20);
+
+    // Progress bar
+    loadingBar = lv_bar_create(loadingScreen);
+    lv_obj_set_size(loadingBar, 200, 20);
+    lv_obj_align(loadingBar, LV_ALIGN_CENTER, 0, 20);
+    lv_bar_set_range(loadingBar, 0, 100);
+  }
+
+  // Update message and progress
+  lv_label_set_text(loadingLabel, message);
+  lv_bar_set_value(loadingBar, progress, LV_ANIM_OFF);
+
+  // Load the screen
+  lv_scr_load(loadingScreen);
+}
+
+void DisplayManager::HideLoadingScreen() {
+  if (loadingScreen != nullptr) {
+    lv_obj_del(loadingScreen);
+    loadingScreen = nullptr;
+    loadingLabel = nullptr;
+    loadingBar = nullptr;
+  }
+}
+
+// Define the static LED strip instance
+APA102<PIN_APA102_DI, PIN_APA102_CLK> DisplayManager::ledStrip;
+
+void DisplayManager::UpdateLEDFuelGauge() {
+  static int lastSOC = -1;
+  static unsigned long lastUpdate = 0;
+
+  // Throttle updates to max every 5 seconds
+  unsigned long now = millis();
+  if (now - lastUpdate < 5000) {
+    return;
+  }
+
+  // Only update if SOC changed
+  if (stateOfCharge == lastSOC) {
+    return;
+  }
+
+  lastSOC = stateOfCharge;
+  lastUpdate = now;
+
+  const uint8_t ledCount = 7;
+  const uint8_t brightness = 10;  // Moderate brightness
+  rgb_color colors[ledCount];
+
+  // Calculate how many LEDs to light based on SOC (0-100%)
+  int numLit = (stateOfCharge * ledCount + 50) / 100;  // Round to nearest
+  if (numLit > ledCount) numLit = ledCount;
+  if (numLit < 0) numLit = 0;
+
+  // Determine if we need to reverse for rotation
+  // Rotation: 1=0°, 2=90°, 3=180°, 0=270°
+  bool reverse = (currentRotation == 3 || currentRotation == 0);
+
+  for (uint8_t i = 0; i < ledCount; i++) {
+    uint8_t ledIndex = reverse ? (ledCount - 1 - i) : i;
+
+    // Rotate clockwise by 4 positions
+    uint8_t rotatedIndex = (ledIndex + 4) % ledCount;
+
+    // Mirror on vertical axis
+    rotatedIndex = (ledCount - 1) - rotatedIndex;
+
+    if (i < numLit) {
+      // Calculate color based on position in the lit range
+      // Red (low) -> Yellow (mid) -> Green (high)
+      float position = (float)i / (ledCount - 1);  // 0.0 to 1.0
+
+      rgb_color ledColor;
+      if (position < 0.20f) {
+        // Red to Orange (0-20%)
+        uint8_t green = (uint8_t)(position * 5.0f * 128);
+        ledColor = rgb_color{255, green, 0};
+      } else if (position < 0.55f) {
+        // Orange to Yellow (20-55%)
+        uint8_t green = 128 + (uint8_t)((position - 0.20f) / 0.35f * 127);
+        ledColor = rgb_color{255, green, 0};
+      } else {
+        // Yellow to Green (55-100%)
+        float fade = (position - 0.55f) / 0.45f;  // 0.0 to 1.0
+        uint8_t red = 255 - (uint8_t)(fade * 255);
+        ledColor = rgb_color{red, 255, 0};
+      }
+      colors[rotatedIndex] = ledColor;
+    } else {
+      // LED off
+      colors[rotatedIndex] = rgb_color{0, 0, 0};
+    }
+  }
+
+  ledStrip.write(colors, ledCount, brightness);
+}
+
+void DisplayManager::ShowErrorMessage(const char* title, const char* message, int displayTimeMs) {
+  static lv_obj_t* errorScreen = nullptr;
+  static lv_obj_t* errorTitle = nullptr;
+  static lv_obj_t* errorMessage = nullptr;
+
+  // Create error screen if it doesn't exist
+  if (errorScreen == nullptr) {
+    errorScreen = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(errorScreen, lv_color_hex(0x000000), 0);
+
+    // Title label (red for errors, green for success)
+    errorTitle = lv_label_create(errorScreen);
+    lv_obj_set_style_text_font(errorTitle, &lv_font_montserrat_24, 0);
+    lv_obj_align(errorTitle, LV_ALIGN_TOP_MID, 0, 30);
+
+    // Message label
+    errorMessage = lv_label_create(errorScreen);
+    lv_obj_set_style_text_font(errorMessage, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(errorMessage, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_align(errorMessage, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(errorMessage, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_width(errorMessage, 280);
+  }
+
+  // Update text and color (green for success, red for errors)
+  lv_label_set_text(errorTitle, title);
+  lv_label_set_text(errorMessage, message);
+
+  if (String(title).indexOf("Success") >= 0) {
+    lv_obj_set_style_text_color(errorTitle, lv_color_hex(0x00FF00), 0);
+  } else {
+    lv_obj_set_style_text_color(errorTitle, lv_color_hex(0xFF0000), 0);
+  }
+
+  // Show the screen and set timeout
+  lv_scr_load(errorScreen);
+  errorDisplayStart = millis();
+  errorDisplayDuration = displayTimeMs;
+  errorMessageShown = true;
 }
