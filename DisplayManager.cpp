@@ -85,49 +85,49 @@ void DisplayManager::UpdateData(int id, int value) {
       break;
     case HEATREQ_PARAM_ID:
       // Debug tracking for HeatReq
-      if (debugLabel != nullptr) {
-        static int updateCount = 0;
-        static int lastValue = -1;
-        static unsigned long lastDisplayUpdate = 0;
-        updateCount++;
-
-        unsigned long now = millis();
-
-        // Check if this is from serial timeout or serial command
-        const char* source = "CAN";
-        if (serialCommandHandler != nullptr) {
-          unsigned long lastTimeout = serialCommandHandler->GetLastTimeoutTime();
-          unsigned long lastCmdTime = serialCommandHandler->GetLastCommandIdTime();
-          int lastCmdId = serialCommandHandler->GetLastCommandId();
-
-          if (lastTimeout > 0 && (now - lastTimeout) < 500) {
-            source = "TIMEOUT";
-          } else if (lastCmdId == 155 && (now - lastCmdTime) < 500) {
-            source = "SERIAL";
-          }
-        }
-
-        // Only update display every 200ms to reduce overhead
-        if (now - lastDisplayUpdate >= 200) {
-          char debugStr[80];
-          snprintf(debugStr, sizeof(debugStr), "HR:%d #%d %s T:%lu",
-                   value, updateCount, source, now / 1000);
-          lv_label_set_text(debugLabel, debugStr);
-          lastDisplayUpdate = now;
-        }
+//      if (debugLabel != nullptr) {
+//        static int updateCount = 0;
+//        static int lastValue = -1;
+//        static unsigned long lastDisplayUpdate = 0;
+//        updateCount++;
+//
+//        unsigned long now = millis();
+//
+//        // Check if this is from serial timeout or serial command
+//        const char* source = "CAN";
+//        if (serialCommandHandler != nullptr) {
+//          unsigned long lastTimeout = serialCommandHandler->GetLastTimeoutTime();
+//          unsigned long lastCmdTime = serialCommandHandler->GetLastCommandIdTime();
+//          int lastCmdId = serialCommandHandler->GetLastCommandId();
+//
+//          if (lastTimeout > 0 && (now - lastTimeout) < 500) {
+//            source = "TIMEOUT";
+//          } else if (lastCmdId == 155 && (now - lastCmdTime) < 500) {
+//            source = "SERIAL";
+//          }
+//        }
+//
+//        // Only update display every 200ms to reduce overhead
+//        if (now - lastDisplayUpdate >= 200) {
+//          char debugStr[80];
+//          snprintf(debugStr, sizeof(debugStr), "HR:%d #%d %s T:%lu",
+//                   value, updateCount, source, now / 1000);
+//          lv_label_set_text(debugLabel, debugStr);
+//          lastDisplayUpdate = now;
+//        }
 
         // Log only actual value changes
-        if (value != lastValue) {
-          Serial.print("HeatReq: ");
-          Serial.print(lastValue);
-          Serial.print("->");
-          Serial.print(value);
-          Serial.print(" (");
-          Serial.print(source);
-          Serial.println(")");
-          lastValue = value;
-        }
-      }
+//        if (value != lastValue) {
+//          Serial.print("HeatReq: ");
+//          Serial.print(lastValue);
+//          Serial.print("->");
+//          Serial.print(value);
+//          Serial.print(" (");
+//          Serial.print(source);
+//          Serial.println(")");
+//          lastValue = value;
+//        }
+ //     }
       break;
   }
 }
@@ -144,49 +144,49 @@ void DisplayManager::UpdateSpotParameterData(int id, int value) {
 
 void DisplayManager::UpdateParameterData(int id, int value) {
   // Debug tracking for HeatReq (ID 155)
-  if (id == HEATREQ_PARAM_ID && debugLabel != nullptr) {
-    static int updateCount = 0;
-    static int lastValue = -1;
-    static unsigned long lastDisplayUpdate = 0;
-    updateCount++;
-
-    unsigned long now = millis();
-
-    // Check if this is from serial timeout or serial command
-    const char* source = "CAN";
-    if (serialCommandHandler != nullptr) {
-      unsigned long lastTimeout = serialCommandHandler->GetLastTimeoutTime();
-      unsigned long lastCmdTime = serialCommandHandler->GetLastCommandIdTime();
-      int lastCmdId = serialCommandHandler->GetLastCommandId();
-
-      if (lastTimeout > 0 && (now - lastTimeout) < 500) {
-        source = "TIMEOUT";
-      } else if (lastCmdId == 155 && (now - lastCmdTime) < 500) {
-        source = "SERIAL";
-      }
-    }
+//  if (id == HEATREQ_PARAM_ID && debugLabel != nullptr) {
+//    static int updateCount = 0;
+//    static int lastValue = -1;
+//    static unsigned long lastDisplayUpdate = 0;
+//    updateCount++;
+//
+//    unsigned long now = millis();
+//
+//    // Check if this is from serial timeout or serial command
+//    const char* source = "CAN";
+//    if (serialCommandHandler != nullptr) {
+//      unsigned long lastTimeout = serialCommandHandler->GetLastTimeoutTime();
+//      unsigned long lastCmdTime = serialCommandHandler->GetLastCommandIdTime();
+//      int lastCmdId = serialCommandHandler->GetLastCommandId();
+//
+//      if (lastTimeout > 0 && (now - lastTimeout) < 500) {
+//        source = "TIMEOUT";
+//      } else if (lastCmdId == 155 && (now - lastCmdTime) < 500) {
+//        source = "SERIAL";
+//      }
+//    }
 
     // Only update display every 200ms to reduce overhead
-    if (now - lastDisplayUpdate >= 200) {
-      char debugStr[80];
-      snprintf(debugStr, sizeof(debugStr), "HR:%d #%d %s T:%lu",
-               value, updateCount, source, now / 1000);
-      lv_label_set_text(debugLabel, debugStr);
-      lastDisplayUpdate = now;
-    }
+//    if (now - lastDisplayUpdate >= 200) {
+//      char debugStr[80];
+//      snprintf(debugStr, sizeof(debugStr), "HR:%d #%d %s T:%lu",
+//               value, updateCount, source, now / 1000);
+//      lv_label_set_text(debugLabel, debugStr);
+//      lastDisplayUpdate = now;
+//    }
 
     // Log only actual value changes
-    if (value != lastValue) {
-      Serial.print("HeatReq: ");
-      Serial.print(lastValue);
-      Serial.print("->");
-      Serial.print(value);
-      Serial.print(" (");
-      Serial.print(source);
-      Serial.println(")");
-      lastValue = value;
-    }
-  }
+//    if (value != lastValue) {
+//      Serial.print("HeatReq: ");
+//      Serial.print(lastValue);
+//      Serial.print("->");
+//      Serial.print(value);
+//      Serial.print(" (");
+//      Serial.print(source);
+//      Serial.println(")");
+//      lastValue = value;
+//    }
+ // }
 
   // Find the parameter with matching ID and update its value (only if not editing)
   if (!isEditingParam) {
@@ -503,15 +503,15 @@ void DisplayManager::Setup() {
   Serial.println("LED Test complete");
 
   // Create debug label for HeatReq (will be shown on all screens)
-  debugLabel = lv_label_create(lv_scr_act());
-  lv_label_set_text(debugLabel, "HeatReq: --");
-  lv_obj_set_style_text_font(debugLabel, &lv_font_montserrat_12, 0);
-  lv_obj_set_style_text_color(debugLabel, lv_color_make(255, 255, 0), 0);
-  lv_obj_set_style_bg_color(debugLabel, lv_color_make(0, 0, 0), 0);
-  lv_obj_set_style_bg_opa(debugLabel, LV_OPA_70, 0);
-  lv_obj_set_style_pad_all(debugLabel, 2, 0);
-  lv_obj_align(debugLabel, LV_ALIGN_TOP_LEFT, 2, 2);
-  lv_obj_move_foreground(debugLabel);
+//  debugLabel = lv_label_create(lv_scr_act());
+//  lv_label_set_text(debugLabel, "HeatReq: --");
+//  lv_obj_set_style_text_font(debugLabel, &lv_font_montserrat_12, 0);
+//  lv_obj_set_style_text_color(debugLabel, lv_color_make(255, 255, 0), 0);
+//  lv_obj_set_style_bg_color(debugLabel, lv_color_make(0, 0, 0), 0);
+//  lv_obj_set_style_bg_opa(debugLabel, LV_OPA_70, 0);
+//  lv_obj_set_style_pad_all(debugLabel, 2, 0);
+//  lv_obj_align(debugLabel, LV_ALIGN_TOP_LEFT, 2, 2);
+//  lv_obj_move_foreground(debugLabel);
 
 }
 
@@ -598,17 +598,17 @@ void DisplayManager::Loop() {
   lv_timer_handler();
 
   // LED fuel gauge disabled for testing
-  // UpdateLEDFuelGauge();
+  UpdateLEDFuelGauge();
 
   // Ensure debug label is on the active screen and on top
-  if (debugLabel != nullptr) {
-    lv_obj_t* activeScreen = lv_scr_act();
-    if (lv_obj_get_parent(debugLabel) != activeScreen) {
-      lv_obj_set_parent(debugLabel, activeScreen);
-      lv_obj_align(debugLabel, LV_ALIGN_TOP_LEFT, 2, 2);
-      lv_obj_move_foreground(debugLabel);
-    }
-  }
+//  if (debugLabel != nullptr) {
+//    lv_obj_t* activeScreen = lv_scr_act();
+//    if (lv_obj_get_parent(debugLabel) != activeScreen) {
+//      lv_obj_set_parent(debugLabel, activeScreen);
+//      lv_obj_align(debugLabel, LV_ALIGN_TOP_LEFT, 2, 2);
+//      lv_obj_move_foreground(debugLabel);
+//    }
+//  }
 
   // Auto-hide error message after timeout
   if (errorMessageShown && (millis() - errorDisplayStart) > errorDisplayDuration) {

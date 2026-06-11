@@ -33,6 +33,9 @@
 #define PAGE_SIZE_BYTES       1024
 #define VCU_UPDATE_CAN_ID     0x7DD
 
+// Include CanSDOQueue after constants are defined
+#include "CanSDOQueue.h"
+
 class CanSDO
 {
    public:
@@ -60,7 +63,11 @@ class CanSDO
       int GetVcuUpdateProgressPercent();
       void AbortVcuUpdate();
 
+      // SDO Queue access
+      CanSDOQueue& GetQueue();
+
    private:
+      CanSDOQueue sdoQueue;  // Centralized request queue
       twai_message_t outMessage;
       twai_message_t inMessage;
       State state;
